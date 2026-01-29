@@ -44,3 +44,33 @@ Establish a correct, production-ready project foundation before adding data or m
 
 **Why this matters**
 Correct packaging and testable entry points prevent import bugs, deployment issues, and brittle development later. This slice ensures the system can be extended safely.
+
+## Slice 1 — Database Foundation & CLI Initialization (Complete)
+
+**Purpose**  
+Introduce a persistent, inspectable data layer and formalize system initialization before ingesting real evidence or running models.
+
+**What this slice does**
+- Establishes a relational database foundation using DuckDB + SQLAlchemy
+- Defines core domain tables (runs, evidence, features, model versions)
+- Adds an idempotent database initialization routine
+- Introduces a first-class CLI for system operations
+- Extends the `/health` endpoint to verify database connectivity
+
+**What I implemented**
+- SQLAlchemy engine and session management
+- Declarative schema definitions for core entities
+- Repository layer for structured database access
+- `trustlens init-db` CLI command for safe schema initialization
+- Database connectivity checks wired into the API health endpoint
+- Updated unit tests to reflect DB-backed system health
+
+**Why this matters**
+This slice converts the project from a stateless API into a real, auditable system with:
+- persistent state
+- reproducible runs
+- inspectable features and evidence
+- explicit lifecycle control via a CLI
+
+By introducing the database and repository pattern early, later slices can focus on **data logic, feature engineering, and modeling** without reworking infrastructure.
+
