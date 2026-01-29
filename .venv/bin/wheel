@@ -1,4 +1,4 @@
-#!/Users/praveenpuviindran/Desktop/trustlens/.venv/bin/python3.11
+#!/Users/praveenpuviindran/Desktop/trustlens/.venv/bin/python
 import sys
 from wheel._commands import main
 if __name__ == '__main__':

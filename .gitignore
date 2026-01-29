@@ -1,0 +1,23 @@
+*.egg-info/
+build/
+dist/
+__pycache__/
+.pytest_cache/
+.DS_Store
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test / tooling
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+
+# Virtual env
+.venv/

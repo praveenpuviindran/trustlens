@@ -9,6 +9,10 @@ requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.100",
   "uvicorn>=0.20",
+  "typer>=0.12",
+  "sqlalchemy>=2.0",
+  "pydantic-settings>=2.2",
+  "duckdb-engine>=0.13",
 ]
 
 [project.optional-dependencies]
@@ -16,6 +20,9 @@ dev = [
   "pytest>=8",
   "httpx>=0.25",
 ]
+
+[project.scripts]
+trustlens = "trustlens.cli.app:app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
