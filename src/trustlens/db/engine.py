@@ -1,6 +1,8 @@
+# src/trustlens/db/engine.py
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -9,36 +11,31 @@ from trustlens.config.settings import settings
 
 
 @dataclass(frozen=True)
-class DbPingResult:
+class DBPingResult:
     ok: bool
     detail: str
 
 
-def build_engine(database_url: str | None = None) -> Engine:
+def build_engine(db_url: Optional[str] = None) -> Engine:
     """
     Build a SQLAlchemy Engine.
 
-    Inputs:
-    - database_url: optional override (useful for tests). Defaults to settings.database_url.
-
-    Failure modes:
-    - invalid URL / missing driver => create_engine or connect will fail
+    Why allow db_url override?
+    - tests need in-memory or temp DBs
+    - CLI/API should default to settings.DB_URL
     """
-    url = database_url or settings.database_url
-    return create_engine(url, pool_pre_ping=True)
+    url = db_url or settings.db_url
+    return create_engine(url, future=True)
 
 
-def ping_db(engine: Engine) -> DbPingResult:
+def ping_db(engine: Engine) -> DBPingResult:
     """
-    Minimal DB connectivity check.
-
-    Returns:
-    - ok=True if SELECT 1 succeeds
-    - ok=False with error detail otherwise
+    Lightweight DB connectivity check.
+    Must NEVER return None (health endpoint depends on this).
     """
     try:
         with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        return DbPingResult(ok=True, detail="db_ping_ok")
-    except Exception as e:  # noqa: BLE001
-        return DbPingResult(ok=False, detail=f"db_ping_failed: {type(e).__name__}: {e}")
+            conn.execute(text("select 1")).scalar_one()
+        return DBPingResult(ok=True, detail="ok")
+    except Exception as e:
+        return DBPingResult(ok=False, detail=f"{type(e).__name__}: {e}")

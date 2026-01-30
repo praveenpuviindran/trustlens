@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
-
 from trustlens.db.engine import build_engine, ping_db
 
-app = FastAPI(title="TrustLens", version="0.1.0")
-
+app = FastAPI()
 
 @app.get("/health")
 def health() -> dict:

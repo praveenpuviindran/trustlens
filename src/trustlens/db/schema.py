@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
+from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,7 +19,13 @@ class Run(Base):
     __tablename__ = "runs"
 
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # When this run was created
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
 
     claim_text: Mapped[str] = mapped_column(Text, nullable=False)
     query_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -30,22 +37,46 @@ class Run(Base):
 
 class EvidenceItem(Base):
     """
-    Evidence rows linked to a run. GDELT ingestion later.
+    Evidence rows linked to a run (articles, sources, etc).
     """
     __tablename__ = "evidence_items"
 
-    evidence_id: Mapped[str] = mapped_column(String, primary_key=True)
+    # ✅ FIX: generate UUID primary key automatically (Python-side default)
+    evidence_id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+
     run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # When we ingested/retrieved it (the time we called GDELT)
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    # When it was published/seen (if known)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     url: Mapped[str] = mapped_column(Text, nullable=False)
     domain: Mapped[str] = mapped_column(String, nullable=False, index=True)
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    source: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "gdelt_doc2"
+    source: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "gdelt_doc"
     raw_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # DB row creation timestamp (separate from retrieved_at)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("url", name="uq_evidence_items_url"),
+    )
 
 
 class Feature(Base):
@@ -54,10 +85,20 @@ class Feature(Base):
     """
     __tablename__ = "features"
 
-    feature_id: Mapped[str] = mapped_column(String, primary_key=True)
+    feature_id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+
     run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
     feature_group: Mapped[str] = mapped_column(String, nullable=False)  # prior/corroboration/time
     feature_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     feature_value: Mapped[float] = mapped_column(Float, nullable=False)
@@ -69,8 +110,17 @@ class ModelVersion(Base):
     """
     __tablename__ = "model_versions"
 
-    model_version_id: Mapped[str] = mapped_column(String, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    model_version_id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
 
     name: Mapped[str] = mapped_column(String, nullable=False)  # human-friendly identifier
     model_type: Mapped[str] = mapped_column(String, nullable=False)  # logreg/xgb/etc
@@ -96,4 +146,9 @@ class SourcePrior(Base):
     newsguard_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     prior_score: Mapped[float] = mapped_column(Float, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )

@@ -1,88 +1,102 @@
+# src/trustlens/repos/evidence_repo.py
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from uuid import uuid4
+import json
+from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from trustlens.models.domain import EvidenceItemRow
+from trustlens.db.schema import EvidenceItem
 
 
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _parse_gdelt_seendate(value: Optional[str]) -> Optional[datetime]:
+    """
+    GDELT seendate format: 'YYYYMMDDhhmmss'
+    Example: '20250129143000'
+    """
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
 
 
 class EvidenceRepo:
-    """Repository for evidence_items."""
+    """
+    DB access layer for EvidenceItem.
+    Important: this repo operates on an existing SQLAlchemy Session.
+    """
 
-    def __init__(self, engine: Engine) -> None:
-        self._engine = engine
+    def __init__(self, engine):
+        # Kept for parity with your other repos; not strictly needed when Session is injected.
+        self.engine = engine
 
-    def add_evidence(
+    def upsert_from_gdelt(
         self,
+        session: Session,
         run_id: str,
         url: str,
-        domain: str,
-        source: str,
-        title: str | None = None,
-        published_at: datetime | None = None,
-        raw_json: str | None = None,
-    ) -> str:
-        evidence_id = str(uuid4())
-        retrieved_at = utcnow()
+        domain: str | None,
+        title: str | None,
+        seendate: str | None,
+        raw: dict | None = None,
+        source: str = "gdelt_doc",
+    ) -> EvidenceItem:
+        """
+        Upsert by URL (stable unique key).
 
-        with self._engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    INSERT INTO evidence_items (
-                      evidence_id, run_id, retrieved_at, published_at, url, domain, title, source, raw_json
-                    ) VALUES (
-                      :evidence_id, :run_id, :retrieved_at, :published_at, :url, :domain, :title, :source, :raw_json
-                    )
-                    """
-                ),
-                {
-                    "evidence_id": evidence_id,
-                    "run_id": run_id,
-                    "retrieved_at": retrieved_at,
-                    "published_at": published_at,
-                    "url": url,
-                    "domain": domain,
-                    "title": title,
-                    "source": source,
-                    "raw_json": raw_json,
-                },
-            )
-        return evidence_id
+        Mapping:
+        - GDELT seendate -> EvidenceItem.published_at (datetime | None)
+        - ingestion time -> EvidenceItem.retrieved_at (datetime, defaulted if not provided)
+        - raw -> EvidenceItem.raw_json (string JSON)
 
-    def list_by_run(self, run_id: str, limit: int = 200) -> list[EvidenceItemRow]:
-        with self._engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    """
-                    SELECT evidence_id, run_id, retrieved_at, published_at, url, domain, title, source, raw_json
-                    FROM evidence_items
-                    WHERE run_id = :run_id
-                    ORDER BY retrieved_at DESC
-                    LIMIT :limit
-                    """
-                ),
-                {"run_id": run_id, "limit": limit},
-            ).fetchall()
+        NOTE:
+        - With your schema, EvidenceItem.evidence_id is auto-generated (UUID default),
+          so we do NOT set it here.
+        - Avoid ORDER BY created_at (DuckDB/SQLAlchemy index weirdness + not needed since url unique).
+        """
+        # One-or-none is safe because schema has UNIQUE(url)
+        existing = session.execute(
+            select(EvidenceItem).where(EvidenceItem.url == url)
+        ).scalar_one_or_none()
 
-        return [
-            EvidenceItemRow(
-                evidence_id=r[0],
-                run_id=r[1],
-                retrieved_at=r[2],
-                published_at=r[3],
-                url=r[4],
-                domain=r[5],
-                title=r[6],
-                source=r[7],
-                raw_json=r[8],
-            )
-            for r in rows
-        ]
+        published_at = _parse_gdelt_seendate(seendate)
+        raw_json = json.dumps(raw or {})
+
+        now = datetime.utcnow()
+
+        if existing is not None:
+            # Update fields (idempotent)
+            existing.run_id = run_id
+            existing.domain = domain or ""  # domain is NOT NULL in schema
+            existing.title = title
+            existing.published_at = published_at
+            existing.raw_json = raw_json
+            existing.source = source
+
+            # retrieved_at tracks "when we pulled it" (optional but useful)
+            # If you want to preserve earliest retrieved_at, remove this line.
+            existing.retrieved_at = now
+
+            # created_at should NOT change on update; leave it alone.
+            session.flush()
+            return existing
+
+        # INSERT new
+        item = EvidenceItem(
+            run_id=run_id,
+            url=url,
+            domain=domain or "",  # schema: NOT NULL
+            title=title,
+            source=source,
+            raw_json=raw_json,
+            published_at=published_at,
+            retrieved_at=now,  # schema: NOT NULL
+            created_at=now,    # schema: NOT NULL
+        )
+        session.add(item)
+        session.flush()
+        return item
