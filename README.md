@@ -105,3 +105,35 @@ This prior becomes the system’s first **stable credibility signal**:
 - reproducible across runs
 - easy to ablate during evaluation
 - independent of LLM judgment
+
+## Slice 3 — Evidence Ingestion Pipeline (Complete)
+
+**Purpose**  
+Introduce a deterministic, testable evidence ingestion pipeline that retrieves real-world news articles and stores them as structured, queryable evidence linked to each analysis run.
+
+**What this slice does**
+- Retrieves news articles from the GDELT DOC API
+- Normalizes article metadata into a first-class `evidence_items` table
+- Enforces URL-level uniqueness to prevent duplicate evidence
+- Links each piece of evidence to a specific analysis run
+- Separates publication time, retrieval time, and database creation time
+- Ensures idempotent ingestion behavior across repeated runs
+
+**What I implemented**
+- GDELT client with dependency injection for testability
+- Structured `EvidenceItem` schema with:
+  - stable primary keys
+  - explicit temporal semantics (`published_at`, `retrieved_at`, `created_at`)
+  - enforced URL uniqueness
+- Repository-layer upsert logic for evidence ingestion
+- End-to-end pipeline wiring (`fetch → normalize → persist`)
+- Full pipeline unit test using mocked GDELT HTTP responses
+
+**Why this matters**
+This slice converts external news data into **auditable, queryable evidence**:
+- every article is traceable to a run
+- duplicate ingestion is prevented by design
+- temporal reasoning (when something was published vs. retrieved) is explicit
+- downstream feature engineering can rely on stable evidence invariants
+
+With this slice complete, the system now supports **real-world corroboration at scale** while remaining fully testable and reproducible.
