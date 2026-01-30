@@ -74,3 +74,34 @@ This slice converts the project from a stateless API into a real, auditable syst
 
 By introducing the database and repository pattern early, later slices can focus on **data logic, feature engineering, and modeling** without reworking infrastructure.
 
+## Slice 2 — Domain Reliability Prior (Complete)
+
+**Purpose**  
+Introduce a quantitative, domain-level reliability prior so credibility scoring begins with a measurable baseline signal before corroboration or timing is considered.
+
+**What this slice does**
+- Loads the HuggingFace dataset `sergioburdisso/news_media_reliability`
+- Normalizes news domains for consistent matching
+- Stores domain reliability data in a first-class SQL table: `source_priors`
+- Maps reliability labels to a numeric prior score in **[0, 1]**
+- Exposes a CLI command to load or refresh priors: `trustlens load-priors`
+
+**What I implemented**
+- End-to-end priors ingestion pipeline (HF → cleaned rows → DB upsert)
+- `source_priors` schema with:
+  - domain
+  - reliability_label (-1 / 0 / 1)
+  - optional NewsGuard score
+  - numeric prior_score
+  - updated_at timestamp
+- Unit tests validating:
+  - domain normalization
+  - label → score mapping
+  - idempotent DB writes
+
+**Why this matters**
+This prior becomes the system’s first **stable credibility signal**:
+- fully inspectable in SQL
+- reproducible across runs
+- easy to ablate during evaluation
+- independent of LLM judgment
