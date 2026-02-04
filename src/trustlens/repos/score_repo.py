@@ -37,6 +37,8 @@ class ScoreRepository:
             )
         )
 
+        # DuckDB lacks reliable SERIAL/AUTOINCREMENT support via SQLAlchemy;
+        # manually assign a monotonically increasing integer id.
         next_id = int(
             self.session.execute(
                 select(func.coalesce(func.max(Score.score_id), 0))

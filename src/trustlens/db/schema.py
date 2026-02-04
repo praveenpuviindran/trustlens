@@ -149,6 +149,7 @@ class Score(Base):
         primary_key=True,
         autoincrement=False,
     )
+    # NOTE: score_id is assigned manually in ScoreRepository to keep DuckDB compatible.
     run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     model_version: Mapped[str] = mapped_column(String, nullable=False)
 
