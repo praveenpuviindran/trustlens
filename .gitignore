@@ -25,3 +25,11 @@ dist/
 .venv/
 data/
 *.duckdb
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/*.duckdb
+*.duckdb
+.pytest_cache/
