@@ -397,6 +397,43 @@ This slice makes scoring **learnable and reproducible**:
 - thresholds are tuned for operational labels
 - trained weights can be evaluated and compared offline
 
+---
+
+## Slice 9 — Product API + End-to-End Run Endpoint (Complete)
+
+**Purpose**  
+Expose TrustLens as a real API surface that runs the full pipeline end-to-end.
+
+**What this slice does**
+- Creates runs and orchestrates evidence → features → score
+- Supports grounded explanations and chat over stored data
+- Adds read endpoints to fetch stored artifacts by run_id
+
+**What I implemented**
+- FastAPI routes for `/runs`, `/runs/{id}` and artifact endpoints
+- Pydantic request/response schemas with validation
+- Dependency injection for DB session, evidence fetcher, and LLM client
+- Deterministic API tests with mocked evidence + stub LLM
+
+**Why this matters**
+This slice turns the system into a product surface:
+- end-to-end runs are auditable and reproducible
+- outputs are structured and grounded
+- clients can retrieve artifacts and chat safely
+
+**API Examples**
+```bash
+curl -X POST http://localhost:8000/runs \\
+  -H 'Content-Type: application/json' \\
+  -d '{"claim_text":"Example claim","query_text":"Example query","max_records":10,"model_id":"baseline_v1","include_explanation":true}'
+
+curl http://localhost:8000/runs/<run_id>/score
+
+curl -X POST http://localhost:8000/runs/<run_id>/chat \\
+  -H 'Content-Type: application/json' \\
+  -d '{"question":"Why was this labeled credible?"}'
+```
+
 ### Why this matters
 This slice turns TrustLens into an actual scoring system:
 - the score is reproducible and testable (no LLM judgment)
