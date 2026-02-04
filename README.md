@@ -345,6 +345,32 @@ This slice makes scoring measurable:
 - calibration quality becomes visible
 - results are reproducible and audit-friendly
 
+---
+
+## Slice 7 — LLM Explanation + Grounded Chat (Complete)
+
+**Purpose**  
+Add a grounded explanation layer that never changes scores and never invents facts.
+
+**What this slice does**
+- Builds a structured JSON context from stored run data
+- Generates a grounded summary explanation
+- Adds a chat-style Q&A interface constrained to stored context
+- Persists explanation artifacts for auditability
+
+**What I implemented**
+- LLM client abstraction (`LLMClient`) with a deterministic stub
+- `LLMExplainer` service for context building + explanation/chat
+- `explanations` table + repository
+- CLI commands: `trustlens explain-run` and `trustlens chat-run`
+- Tests for context building, explainer behavior, repo, and CLI
+
+**Why this matters**
+This slice makes the system interpretable and safe:
+- explanations are grounded in evidence, features, and scores
+- no hallucinated claims
+- chat answers remain auditable and deterministic
+
 ### Why this matters
 This slice turns TrustLens into an actual scoring system:
 - the score is reproducible and testable (no LLM judgment)

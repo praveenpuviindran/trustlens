@@ -32,3 +32,20 @@ def init_db(engine: Engine) -> None:
             pass
     finally:
         conn.close()
+
+
+def ensure_db(engine: Engine) -> None:
+    """
+    Create tables if missing without dropping existing data.
+    """
+    conn = engine.connect()
+    try:
+        Base.metadata.create_all(bind=conn)
+        try:
+            raw = conn.connection
+            if hasattr(raw, "commit"):
+                raw.commit()
+        except Exception:
+            pass
+    finally:
+        conn.close()

@@ -185,3 +185,28 @@ class EvalResult(Base):
         nullable=False,
         default=datetime.utcnow,
     )
+
+
+class Explanation(Base):
+    """
+    LLM explanation artifacts for runs.
+    """
+    __tablename__ = "explanations"
+
+    explanation_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=False,
+    )
+    # NOTE: explanation_id is assigned manually in ExplanationRepository for DuckDB compatibility.
+    run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    model_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+    mode: Mapped[str] = mapped_column(String, nullable=False)  # summary/chat
+    user_question: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    response_text: Mapped[str] = mapped_column(Text, nullable=False)
+    context_json: Mapped[str] = mapped_column(Text, nullable=False)

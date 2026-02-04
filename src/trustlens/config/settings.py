@@ -24,5 +24,10 @@ class Settings(BaseSettings):
     gdelt_timeout_s: float = 20.0
     gdelt_max_records_default: int = 50
 
+    # LLM explanation settings (default stub for deterministic tests)
+    llm_provider: str = "stub"
+    llm_model_name: str | None = None
+    openai_api_key: str | None = None
+
 
 settings = Settings()

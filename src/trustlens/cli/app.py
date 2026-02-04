@@ -14,6 +14,8 @@ from trustlens.services.pipeline_evidence import fetch_and_store_evidence
 from trustlens.services.priors import build_prior_records
 from trustlens.services.scoring import MODEL_VERSION
 from trustlens.cli.evaluate import evaluate_cmd
+from trustlens.cli.explain import explain_cmd
+from trustlens.cli.chat import chat_cmd
 
 app = typer.Typer(help="TrustLens CLI (init DB, pipelines, evaluation).")
 console = Console()
@@ -160,6 +162,8 @@ def score_run_cmd(
 
 
 app.command("evaluate")(evaluate_cmd)
+app.command("explain-run")(explain_cmd)
+app.command("chat-run")(chat_cmd)
 
 
 def main() -> None:
