@@ -59,6 +59,7 @@ class EvidenceItem(Base):
     url: Mapped[str] = mapped_column(Text, nullable=False)
     domain: Mapped[str] = mapped_column(String, nullable=False, index=True)
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    snippet: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     source: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "gdelt_doc"
     raw_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -229,5 +230,6 @@ class TrainedModel(Base):
     weights_json: Mapped[str] = mapped_column(Text, nullable=False)
     thresholds_json: Mapped[str] = mapped_column(Text, nullable=False)
     metrics_json: Mapped[str] = mapped_column(Text, nullable=False)
+    calibration_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     dataset_name: Mapped[str] = mapped_column(String, nullable=False)
     dataset_hash: Mapped[str] = mapped_column(String, nullable=False)

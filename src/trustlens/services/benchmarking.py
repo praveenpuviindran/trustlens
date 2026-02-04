@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
-import matplotlib.pyplot as plt
 from sqlalchemy.orm import Session
 
 from trustlens.db.schema import Feature, Run
@@ -24,7 +23,15 @@ from trustlens.services.scoring import BaselineScorer, TrainedModelScorer
 from trustlens.services.pipeline_evidence import create_run
 
 
-FEATURE_GROUPS = ["volume", "source_quality", "temporal", "corroboration"]
+FEATURE_GROUPS = [
+    "volume",
+    "source_quality",
+    "temporal",
+    "corroboration",
+    "text_similarity",
+    "entity_overlap",
+    "consistency",
+]
 
 
 @dataclass(frozen=True)
@@ -63,6 +70,10 @@ def _ece(probs: List[float], labels: List[int], bins: int = 10) -> float:
 
 
 def _plot_calibration(bins: list[dict], out_path: Path) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
     xs = [b["avg_pred"] for b in bins]
     ys = [b["avg_obs"] for b in bins]
     plt.figure(figsize=(4, 4))
@@ -88,11 +99,20 @@ def _synthetic_features(claim_text: str) -> list[Feature]:
         Feature(feature_group="source_quality", feature_name="weighted_prior_mean", feature_value=u(0, 1)),
         Feature(feature_group="source_quality", feature_name="high_reliability_ratio", feature_value=u(0, 1)),
         Feature(feature_group="source_quality", feature_name="unknown_source_ratio", feature_value=u(0, 1)),
+        Feature(feature_group="source_quality", feature_name="median_prior", feature_value=u(0, 1)),
+        Feature(feature_group="source_quality", feature_name="min_prior", feature_value=u(0, 1)),
+        Feature(feature_group="source_quality", feature_name="max_prior", feature_value=u(0, 1)),
         Feature(feature_group="temporal", feature_name="recency_score", feature_value=u(0, 1)),
         Feature(feature_group="temporal", feature_name="missing_timestamp_ratio", feature_value=u(0, 1)),
         Feature(feature_group="temporal", feature_name="publication_span_hours", feature_value=u(0, 1000)),
         Feature(feature_group="corroboration", feature_name="domain_diversity", feature_value=u(0, 3)),
         Feature(feature_group="corroboration", feature_name="max_domain_concentration", feature_value=u(0, 1)),
+        Feature(feature_group="text_similarity", feature_name="mean_jaccard", feature_value=u(0, 1)),
+        Feature(feature_group="text_similarity", feature_name="max_jaccard", feature_value=u(0, 1)),
+        Feature(feature_group="text_similarity", feature_name="topk_mean_jaccard", feature_value=u(0, 1)),
+        Feature(feature_group="entity_overlap", feature_name="entity_overlap_mean", feature_value=u(0, 1)),
+        Feature(feature_group="entity_overlap", feature_name="entity_overlap_max", feature_value=u(0, 1)),
+        Feature(feature_group="consistency", feature_name="contradiction_signal_ratio", feature_value=u(0, 1)),
     ]
     return features
 
@@ -103,10 +123,12 @@ def run_benchmark(
     evidence_fetcher: Optional[Callable[[str, int], list[dict]]] = None,
     output_dir: Optional[Path] = None,
 ) -> dict:
-    if "lr_v1" in config.model_ids:
-        repo = TrainedModelRepository(session)
-        if not repo.get("lr_v1"):
-            raise RuntimeError("lr_v1 not found. Run `trustlens train-model` first.")
+    repo = TrainedModelRepository(session)
+    for model_id in config.model_ids:
+        if model_id == "baseline_v1":
+            continue
+        if not repo.get(model_id):
+            raise RuntimeError(f"{model_id} not found. Run `trustlens train-model` first.")
 
     rows, meta = load_hf_dataset(
         dataset_name=config.dataset_name,
@@ -123,8 +145,14 @@ def run_benchmark(
     outputs = []
     metrics_by_model: dict = {}
     ablations: dict = {}
+    model_schema_versions: dict = {}
 
     for model_id in config.model_ids:
+        if model_id == "baseline_v1":
+            model_schema_versions[model_id] = "baseline"
+        else:
+            model = repo.get(model_id)
+            model_schema_versions[model_id] = model.feature_schema_version if model else None
         eval_rows: List[EvalRow] = []
         probs: List[float] = []
         labels: List[int] = []
@@ -151,6 +179,7 @@ def run_benchmark(
                         url=a["url"],
                         domain=a.get("domain"),
                         title=a.get("title"),
+                        snippet=a.get("snippet"),
                         seendate=a.get("seendate"),
                         raw=a.get("raw"),
                     )
@@ -223,7 +252,7 @@ def run_benchmark(
                     label = baseline_scorer._label(score)
                 else:
                     # trained model scoring with group zeroed
-                    model = TrainedModelRepository(session).get(model_id)
+                    model = repo.get(model_id)
                     if not model:
                         continue
                     feature_names = json.loads(model.feature_names_json)
@@ -232,7 +261,19 @@ def run_benchmark(
                     values = [float(feature_map.get(n, 0.0)) for n in feature_names]
                     weights = [float(weights_map.get(n, 0.0)) for n in feature_names]
                     logit = intercept + sum(w * v for w, v in zip(weights, values))
-                    score = 1.0 / (1.0 + np.exp(-np.clip(logit, -50, 50)))
+                    raw_score = 1.0 / (1.0 + np.exp(-np.clip(logit, -50, 50)))
+                    score = raw_score
+                    if model.calibration_json:
+                        try:
+                            cal = json.loads(model.calibration_json)
+                            if cal.get("method") == "platt":
+                                a = float(cal.get("a", 1.0))
+                                b = float(cal.get("b", 0.0))
+                                p = float(np.clip(raw_score, 1e-6, 1.0 - 1e-6))
+                                logit_p = np.log(p / (1.0 - p))
+                                score = 1.0 / (1.0 + np.exp(-(a * logit_p + b)))
+                        except (ValueError, json.JSONDecodeError):
+                            score = raw_score
                     thresholds = json.loads(model.thresholds_json)
                     t_lo = float(thresholds.get("t_lo", 0.33))
                     t_hi = float(thresholds.get("t_hi", 0.67))
@@ -272,12 +313,22 @@ def run_benchmark(
             "max_records": config.max_records,
             "no_fetch_evidence": config.no_fetch_evidence,
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "model_feature_schema_versions": model_schema_versions,
         },
         "dataset_hash": dataset_hash,
         "metrics": metrics_by_model,
         "ablations": ablations,
         "timestamp": timestamp,
     }
+
+    if "lr_v1" in metrics_by_model and "lr_v2" in metrics_by_model:
+        report["delta"] = {
+            "lr_v2_over_lr_v1": {
+                "f1": metrics_by_model["lr_v2"]["f1"] - metrics_by_model["lr_v1"]["f1"],
+                "brier": metrics_by_model["lr_v2"]["brier"] - metrics_by_model["lr_v1"]["brier"],
+                "ece": metrics_by_model["lr_v2"]["ece"] - metrics_by_model["lr_v1"]["ece"],
+            }
+        }
 
     # Save outputs + plots
     out_dir = output_dir or (Path("reports") / "benchmarks" / config.dataset_name)

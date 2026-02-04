@@ -32,6 +32,7 @@ def get_evidence_fetcher() -> Callable[[str, int], list[dict]]:
                 "url": a.url,
                 "domain": a.domain,
                 "title": a.title,
+                "snippet": a.snippet,
                 "seendate": a.seendate,
                 "raw": getattr(a, "raw", None),
             }

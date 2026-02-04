@@ -41,6 +41,7 @@ class EvidenceRepo:
         url: str,
         domain: str | None,
         title: str | None,
+        snippet: str | None,
         seendate: str | None,
         raw: dict | None = None,
         source: str = "gdelt_doc",
@@ -73,6 +74,7 @@ class EvidenceRepo:
             existing.run_id = run_id
             existing.domain = domain or ""  # domain is NOT NULL in schema
             existing.title = title
+            existing.snippet = snippet
             existing.published_at = published_at
             existing.raw_json = raw_json
             existing.source = source
@@ -91,6 +93,7 @@ class EvidenceRepo:
             url=url,
             domain=domain or "",  # schema: NOT NULL
             title=title,
+            snippet=snippet,
             source=source,
             raw_json=raw_json,
             published_at=published_at,

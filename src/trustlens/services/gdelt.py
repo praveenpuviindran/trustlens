@@ -17,6 +17,7 @@ class GdeltArticle:
     url: str
     domain: str | None
     title: str | None
+    snippet: str | None
     seendate: str | None  # GDELT: "YYYYMMDDhhmmss"
 
 
@@ -93,6 +94,11 @@ def fetch_gdelt_articles(
                 url=article_url,
                 domain=domain,
                 title=a.get("title"),
+                snippet=(
+                    a.get("snippet")
+                    or a.get("summary")
+                    or a.get("description")
+                ),
                 seendate=a.get("seendate") or a.get("datetime"),
             )
         )

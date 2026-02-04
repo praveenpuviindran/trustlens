@@ -73,6 +73,7 @@ def create_run_endpoint(
                 url=a["url"],
                 domain=a.get("domain"),
                 title=a.get("title"),
+                snippet=a.get("snippet"),
                 seendate=a.get("seendate"),
                 raw=a.get("raw"),
             )
@@ -173,6 +174,7 @@ def get_evidence(
         EvidenceOut(
             domain=e.domain,
             title=e.title,
+            snippet=e.snippet,
             url=e.url,
             published_at=e.published_at,
             retrieved_at=e.retrieved_at,

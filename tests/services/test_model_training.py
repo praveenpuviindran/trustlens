@@ -40,13 +40,15 @@ def test_feature_vectorizer_canonical_ordering():
     session.flush()
     session.add_all(
         [
-            Feature(run_id=run.run_id, feature_group="b", feature_name="z", feature_value=1.0),
-            Feature(run_id=run.run_id, feature_group="a", feature_name="y", feature_value=1.0),
-            Feature(run_id=run.run_id, feature_group="a", feature_name="x", feature_value=1.0),
+            Feature(run_id=run.run_id, feature_group="volume", feature_name="z", feature_value=1.0),
+            Feature(run_id=run.run_id, feature_group="volume", feature_name="y", feature_value=1.0),
+            Feature(run_id=run.run_id, feature_group="text_similarity", feature_name="x", feature_value=1.0),
         ]
     )
     session.commit()
 
     vectorizer = FeatureVectorizer(session)
-    names = vectorizer.canonical_feature_names()
-    assert names == ["x", "y", "z"]
+    names_v1 = vectorizer.canonical_feature_names(schema_version="v1")
+    names_v2 = vectorizer.canonical_feature_names(schema_version="v2")
+    assert names_v1 == ["y", "z"]
+    assert names_v2 == ["x", "y", "z"]

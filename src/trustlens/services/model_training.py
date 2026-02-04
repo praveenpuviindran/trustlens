@@ -18,11 +18,18 @@ from trustlens.services.feature_vectorizer import FeatureVectorizer
 
 
 FEATURE_SCHEMA_VERSION = "v1"
+FEATURE_SCHEMA_VERSION_V2 = "v2"
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
     z = np.clip(z, -50, 50)
     return 1.0 / (1.0 + np.exp(-z))
+
+
+def _logit(p: np.ndarray) -> np.ndarray:
+    eps = 1e-6
+    clipped = np.clip(p, eps, 1.0 - eps)
+    return np.log(clipped / (1.0 - clipped))
 
 
 def _label_to_int(raw: str) -> int | None:
@@ -110,6 +117,36 @@ class ModelTrainer:
     def predict_proba(self, X: np.ndarray, weights: np.ndarray, intercept: float) -> np.ndarray:
         return _sigmoid(X @ weights + intercept)
 
+    def fit_platt_scaling(
+        self,
+        probs: np.ndarray,
+        y: np.ndarray,
+        lr: float = 0.1,
+        epochs: int = 300,
+    ) -> Tuple[float, float]:
+        """
+        Fit Platt scaling parameters on validation probabilities.
+        calibrated = sigmoid(a * logit(prob) + b)
+        """
+        if len(probs) == 0:
+            return 1.0, 0.0
+        x = _logit(probs)
+        a = 1.0
+        b = 0.0
+        for _ in range(epochs):
+            logits = a * x + b
+            preds = _sigmoid(logits)
+            error = preds - y
+            grad_a = float(np.mean(error * x))
+            grad_b = float(np.mean(error))
+            a -= lr * grad_a
+            b -= lr * grad_b
+        return float(a), float(b)
+
+    def apply_platt_scaling(self, probs: np.ndarray, a: float, b: float) -> np.ndarray:
+        logits = a * _logit(probs) + b
+        return _sigmoid(logits)
+
     def tune_thresholds(self, probs_val: np.ndarray, y_val: np.ndarray) -> Tuple[float, float]:
         if len(probs_val) == 0:
             return 0.33, 0.67
@@ -135,6 +172,21 @@ class ModelTrainer:
         if t_lo >= t_hi:
             t_lo, t_hi = 0.33, 0.67
         return t_lo, t_hi
+
+    def _ece(self, probs: np.ndarray, y: np.ndarray, bins: int = 10) -> float:
+        if len(probs) == 0:
+            return 0.0
+        ece = 0.0
+        for i in range(bins):
+            lo = i / bins
+            hi = (i + 1) / bins
+            mask = (probs >= lo) & (probs < hi) if i < bins - 1 else (probs >= lo) & (probs <= hi)
+            if not np.any(mask):
+                continue
+            avg_pred = float(np.mean(probs[mask]))
+            avg_obs = float(np.mean(y[mask]))
+            ece += abs(avg_pred - avg_obs) * (np.sum(mask) / len(probs))
+        return float(ece)
 
     def evaluate(self, probs: np.ndarray, y: np.ndarray) -> dict:
         preds = (probs >= 0.5).astype(int)
@@ -178,6 +230,7 @@ class ModelTrainer:
             "f1": float(f1),
             "brier": float(brier),
             "auroc": auroc,
+            "ece": float(self._ece(probs, y)),
         }
 
     def train_and_register(
@@ -187,6 +240,8 @@ class ModelTrainer:
         model_id: str,
         split_ratio: float = 0.8,
         seed: int = 42,
+        feature_schema_version: str = FEATURE_SCHEMA_VERSION,
+        calibrate: bool = True,
     ) -> TrainedModel:
         if self.session is None or self.vectorizer is None or self.repo is None:
             raise RuntimeError("ModelTrainer requires a valid database session for training.")
@@ -194,7 +249,7 @@ class ModelTrainer:
         rows = self.load_dataset(dataset_path)
         train_rows, val_rows = self.split_train_val(rows, split_ratio, seed=seed)
 
-        feature_names = self.vectorizer.canonical_feature_names()
+        feature_names = self.vectorizer.canonical_feature_names(schema_version=feature_schema_version)
         train_ids = [r.run_id for r in train_rows]
         val_ids = [r.run_id for r in val_rows]
         X_train = self.vectorizer.build_matrix(train_ids, feature_names)
@@ -203,7 +258,15 @@ class ModelTrainer:
         y_val = np.asarray([r.label for r in val_rows], dtype=float)
 
         weights, intercept = self.train_logistic_regression(X_train, y_train)
-        probs_val = self.predict_proba(X_val, weights, intercept)
+        probs_val_raw = self.predict_proba(X_val, weights, intercept)
+
+        calibration_json = None
+        probs_val = probs_val_raw
+        if calibrate:
+            a, b = self.fit_platt_scaling(probs_val_raw, y_val)
+            probs_val = self.apply_platt_scaling(probs_val_raw, a, b)
+            calibration_json = json.dumps({"method": "platt", "a": float(a), "b": float(b)}, sort_keys=True)
+
         t_lo, t_hi = self.tune_thresholds(probs_val, y_val)
         metrics = self.evaluate(probs_val, y_val)
 
@@ -219,11 +282,12 @@ class ModelTrainer:
 
         model = TrainedModel(
             model_id=model_id,
-            feature_schema_version=FEATURE_SCHEMA_VERSION,
+            feature_schema_version=feature_schema_version,
             feature_names_json=feature_names_json,
             weights_json=weights_json,
             thresholds_json=thresholds_json,
             metrics_json=metrics_json,
+            calibration_json=calibration_json,
             dataset_name=dataset_name,
             dataset_hash=dataset_hash,
         )

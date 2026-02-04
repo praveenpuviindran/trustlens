@@ -477,3 +477,42 @@ This slice turns TrustLens into an actual scoring system with real-world, reprod
 - the pipeline is now evidence → features → score, ready for evaluation and model iteration
 
 ---
+
+## Slice 11 — Feature Expansion + Calibration + Model Selection (Complete)
+
+**Purpose**  
+Improve signal quality with richer features, calibrate learned models, and select stronger model versions.
+
+**What this slice does**
+- Adds text similarity, entity overlap, and consistency signals from evidence text
+- Extends source-quality aggregation (median/min/max priors)
+- Adds Platt scaling calibration for trained models with ECE reporting
+- Introduces `lr_v2` trained on expanded feature schema
+- Benchmarks `baseline_v1` vs `lr_v1` vs `lr_v2` with delta comparisons
+
+**What I implemented**
+- New text feature helpers + extraction for similarity/overlap/contradiction
+- Evidence schema support for snippets and grounded text processing
+- Model training upgrades: schema versioning + calibration params stored in DB
+- Scoring uses calibrated probabilities for trained models
+- Tests for text features, calibration, and lr_v2 end-to-end training/scoring
+
+**CLI Examples**
+```bash
+# Extract features including new text/consistency signals
+trustlens extract-features --run-id <run_id>
+
+# Train lr_v2 using expanded feature schema + calibration
+trustlens train-model --dataset data/eval/sample_claims.csv --model-id lr_v2 --split-ratio 0.8 --feature-schema-version v2
+
+# Benchmark baseline vs lr_v1 vs lr_v2 (with ablations + calibration plots)
+trustlens benchmark --dataset liar --split test --max-examples 500 --model baseline_v1 --model lr_v1 --model lr_v2 --max-records 25
+```
+
+**Why this matters**
+This slice makes model quality **measurably better and more reliable**:
+- richer evidence-based features increase signal diversity
+- calibrated probabilities are trustworthy for thresholds and ranking
+- lr_v2 is a distinct, auditable step forward in model selection
+
+---

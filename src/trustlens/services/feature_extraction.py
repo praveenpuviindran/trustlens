@@ -11,6 +11,13 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from trustlens.db.schema import Feature, EvidenceItem, SourcePrior, Run
+from trustlens.services.text_features import (
+    tokenize,
+    jaccard_similarity,
+    extract_entities,
+    entity_overlap_ratio,
+    contradiction_signal,
+)
 
 
 # Tuneable threshold. Tests expect ~0.4 in the realistic scenario, which aligns with 0.8.
@@ -36,6 +43,9 @@ class FeatureExtractor:
         features.extend(self._source_quality_features(run_id))
         features.extend(self._temporal_features(run_id))
         features.extend(self._corroboration_features(run_id))
+        features.extend(self._text_similarity_features(run_id))
+        features.extend(self._entity_overlap_features(run_id))
+        features.extend(self._consistency_features(run_id))
         return features
 
     # ------------------------
@@ -144,12 +154,22 @@ class FeatureExtractor:
             if p >= HIGH_RELIABILITY_THRESHOLD:
                 high_domain_count += 1
         high_reliability_ratio = high_domain_count / len(unique_domains)
+
+        # Aggregate priors across unique domains
+        unique_priors = [prior_map.get(d, DEFAULT_UNKNOWN_PRIOR) for d in unique_domains]
+        unique_priors_sorted = sorted(unique_priors)
+        median_prior = unique_priors_sorted[len(unique_priors_sorted) // 2]
+        min_prior = unique_priors_sorted[0]
+        max_prior = unique_priors_sorted[-1]
         unknown_source_ratio = unknown_count / len(prior_scores)
 
         return [
             Feature(run_id=run_id, feature_group="source_quality", feature_name="weighted_prior_mean", feature_value=float(weighted_prior_mean)),
             Feature(run_id=run_id, feature_group="source_quality", feature_name="high_reliability_ratio", feature_value=float(high_reliability_ratio)),
             Feature(run_id=run_id, feature_group="source_quality", feature_name="unknown_source_ratio", feature_value=float(unknown_source_ratio)),
+            Feature(run_id=run_id, feature_group="source_quality", feature_name="median_prior", feature_value=float(median_prior)),
+            Feature(run_id=run_id, feature_group="source_quality", feature_name="min_prior", feature_value=float(min_prior)),
+            Feature(run_id=run_id, feature_group="source_quality", feature_name="max_prior", feature_value=float(max_prior)),
         ]
 
     # ------------------------
@@ -293,4 +313,109 @@ class FeatureExtractor:
         return [
             Feature(run_id=run_id, feature_group="corroboration", feature_name="domain_diversity", feature_value=float(entropy)),
             Feature(run_id=run_id, feature_group="corroboration", feature_name="max_domain_concentration", feature_value=float(max_concentration)),
+        ]
+
+    # ------------------------
+    # Text similarity
+    # ------------------------
+    def _text_similarity_features(self, run_id: str) -> List[Feature]:
+        run = self.db.query(Run).filter(Run.run_id == run_id).first()
+        if not run or not run.claim_text:
+            return [
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="mean_jaccard", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="max_jaccard", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="topk_mean_jaccard", feature_value=0.0),
+            ]
+
+        claim_tokens = tokenize(run.claim_text)
+        evidence_rows = (
+            self.db.query(EvidenceItem.title, EvidenceItem.snippet)
+            .filter(EvidenceItem.run_id == run_id)
+            .all()
+        )
+        if not evidence_rows:
+            return [
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="mean_jaccard", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="max_jaccard", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="text_similarity", feature_name="topk_mean_jaccard", feature_value=0.0),
+            ]
+
+        sims = []
+        for title, snippet in evidence_rows:
+            text = f"{title or ''} {snippet or ''}".strip()
+            text_tokens = tokenize(text)
+            sims.append(jaccard_similarity(claim_tokens, text_tokens))
+
+        sims_sorted = sorted(sims, reverse=True)
+        mean_jaccard = sum(sims_sorted) / len(sims_sorted)
+        max_jaccard = sims_sorted[0]
+        topk = sims_sorted[:3]
+        topk_mean = sum(topk) / len(topk)
+
+        return [
+            Feature(run_id=run_id, feature_group="text_similarity", feature_name="mean_jaccard", feature_value=float(mean_jaccard)),
+            Feature(run_id=run_id, feature_group="text_similarity", feature_name="max_jaccard", feature_value=float(max_jaccard)),
+            Feature(run_id=run_id, feature_group="text_similarity", feature_name="topk_mean_jaccard", feature_value=float(topk_mean)),
+        ]
+
+    # ------------------------
+    # Entity overlap
+    # ------------------------
+    def _entity_overlap_features(self, run_id: str) -> List[Feature]:
+        run = self.db.query(Run).filter(Run.run_id == run_id).first()
+        if not run or not run.claim_text:
+            return [
+                Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_mean", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_max", feature_value=0.0),
+            ]
+
+        claim_entities = extract_entities(run.claim_text)
+        evidence_rows = (
+            self.db.query(EvidenceItem.title, EvidenceItem.snippet)
+            .filter(EvidenceItem.run_id == run_id)
+            .all()
+        )
+        if not evidence_rows:
+            return [
+                Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_mean", feature_value=0.0),
+                Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_max", feature_value=0.0),
+            ]
+
+        overlaps = []
+        for title, snippet in evidence_rows:
+            text = f"{title or ''} {snippet or ''}".strip()
+            ev_entities = extract_entities(text)
+            overlaps.append(entity_overlap_ratio(claim_entities, ev_entities))
+
+        mean_overlap = sum(overlaps) / len(overlaps)
+        max_overlap = max(overlaps)
+
+        return [
+            Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_mean", feature_value=float(mean_overlap)),
+            Feature(run_id=run_id, feature_group="entity_overlap", feature_name="entity_overlap_max", feature_value=float(max_overlap)),
+        ]
+
+    # ------------------------
+    # Consistency
+    # ------------------------
+    def _consistency_features(self, run_id: str) -> List[Feature]:
+        evidence_rows = (
+            self.db.query(EvidenceItem.title, EvidenceItem.snippet)
+            .filter(EvidenceItem.run_id == run_id)
+            .all()
+        )
+        if not evidence_rows:
+            return [
+                Feature(run_id=run_id, feature_group="consistency", feature_name="contradiction_signal_ratio", feature_value=0.0),
+            ]
+
+        count = 0
+        for title, snippet in evidence_rows:
+            text = f"{title or ''} {snippet or ''}".strip()
+            if contradiction_signal(text):
+                count += 1
+        ratio = count / len(evidence_rows)
+
+        return [
+            Feature(run_id=run_id, feature_group="consistency", feature_name="contradiction_signal_ratio", feature_value=float(ratio)),
         ]

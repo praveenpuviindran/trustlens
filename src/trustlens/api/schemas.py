@@ -25,6 +25,7 @@ class FeatureOut(BaseModel):
 class EvidenceOut(BaseModel):
     domain: str
     title: Optional[str]
+    snippet: Optional[str] = None
     url: str
     published_at: Optional[datetime]
     retrieved_at: datetime

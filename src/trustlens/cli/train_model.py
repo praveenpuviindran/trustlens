@@ -20,6 +20,14 @@ def train_model_cmd(
     dataset: Path = typer.Option(..., help="Path to CSV dataset (run_id,label)"),
     model_id: str = typer.Option(..., help="Model ID (e.g., lr_v1)"),
     split_ratio: float = typer.Option(0.8, help="Train/val split ratio"),
+    feature_schema_version: str = typer.Option(
+        "v1",
+        help="Feature schema version (v1 for base features, v2 for expanded features)",
+    ),
+    calibrate: bool = typer.Option(
+        True,
+        help="Apply Platt scaling on validation probabilities",
+    ),
 ) -> None:
     """Train and register a logistic regression model from stored features."""
     dataset_name = dataset.stem
@@ -34,6 +42,8 @@ def train_model_cmd(
             dataset_name=dataset_name,
             model_id=model_id,
             split_ratio=split_ratio,
+            feature_schema_version=feature_schema_version,
+            calibrate=calibrate,
         )
 
     table = Table(title=f"Trained Model: {model.model_id}")

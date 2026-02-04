@@ -131,6 +131,7 @@ class LLMExplainer:
                 {
                     "domain": e.domain,
                     "title": e.title,
+                    "snippet": e.snippet,
                     "url": e.url,
                     "published_at": e.published_at.isoformat() if e.published_at else None,
                 }

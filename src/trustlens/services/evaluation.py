@@ -210,6 +210,7 @@ def run_evaluation(
                 url=a["url"],
                 domain=a.get("domain"),
                 title=a.get("title"),
+                snippet=a.get("snippet"),
                 seendate=a.get("seendate"),
                 raw=a.get("raw"),
             )

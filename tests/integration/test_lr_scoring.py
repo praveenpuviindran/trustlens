@@ -24,8 +24,8 @@ def test_train_and_score_with_lr(tmp_path: Path):
 
     session.add_all(
         [
-            Feature(run_id=run_pos.run_id, feature_group="g", feature_name="f1", feature_value=1.0),
-            Feature(run_id=run_neg.run_id, feature_group="g", feature_name="f1", feature_value=0.0),
+            Feature(run_id=run_pos.run_id, feature_group="volume", feature_name="total_articles", feature_value=5.0),
+            Feature(run_id=run_neg.run_id, feature_group="volume", feature_name="total_articles", feature_value=0.0),
         ]
     )
     session.commit()

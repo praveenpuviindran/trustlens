@@ -159,15 +159,29 @@ class TrainedModelScorer:
         weights = [float(weights_map.get(name, 0.0)) for name in feature_names]
 
         logit = intercept + sum(w * v for w, v in zip(weights, values))
-        prob = 1.0 / (1.0 + math.exp(-max(min(logit, 50), -50)))
+        raw_prob = 1.0 / (1.0 + math.exp(-max(min(logit, 50), -50)))
+
+        calibrated = raw_prob
+        if model.calibration_json:
+            try:
+                cal = json.loads(model.calibration_json)
+                if cal.get("method") == "platt":
+                    a = float(cal.get("a", 1.0))
+                    b = float(cal.get("b", 0.0))
+                    eps = 1e-6
+                    p = min(max(raw_prob, eps), 1.0 - eps)
+                    logit_p = math.log(p / (1.0 - p))
+                    calibrated = 1.0 / (1.0 + math.exp(-(a * logit_p + b)))
+            except (ValueError, json.JSONDecodeError):
+                calibrated = raw_prob
 
         thresholds = json.loads(model.thresholds_json)
         t_lo = float(thresholds.get("t_lo", 0.33))
         t_hi = float(thresholds.get("t_hi", 0.67))
 
-        if prob >= t_hi:
+        if calibrated >= t_hi:
             label = "credible"
-        elif prob <= t_lo:
+        elif calibrated <= t_lo:
             label = "not_credible"
         else:
             label = "uncertain"
@@ -192,6 +206,8 @@ class TrainedModelScorer:
             "intercept": float(intercept),
             "positive": positives,
             "negative": negatives,
+            "raw_score": float(raw_prob),
+            "calibrated_score": float(calibrated),
         }
 
-        return ScoreResult(run_id=run_id, score=float(prob), label=label, explanation=explanation)
+        return ScoreResult(run_id=run_id, score=float(calibrated), label=label, explanation=explanation)

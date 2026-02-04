@@ -10,15 +10,31 @@ from sqlalchemy.orm import Session
 from trustlens.db.schema import Feature
 
 
+BASE_FEATURE_GROUPS = [
+    "volume",
+    "source_quality",
+    "temporal",
+    "corroboration",
+]
+
+EXPANDED_FEATURE_GROUPS = BASE_FEATURE_GROUPS + [
+    "text_similarity",
+    "entity_overlap",
+    "consistency",
+]
+
+
 class FeatureVectorizer:
     """Builds deterministic feature vectors from stored features."""
 
     def __init__(self, session: Session):
         self.session = session
 
-    def canonical_feature_names(self) -> List[str]:
+    def canonical_feature_names(self, schema_version: str = "v1") -> List[str]:
+        groups = BASE_FEATURE_GROUPS if schema_version == "v1" else EXPANDED_FEATURE_GROUPS
         rows = (
             self.session.query(Feature.feature_group, Feature.feature_name)
+            .filter(Feature.feature_group.in_(groups))
             .distinct()
             .order_by(Feature.feature_group, Feature.feature_name)
             .all()

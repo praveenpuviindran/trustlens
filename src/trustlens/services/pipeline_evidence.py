@@ -58,6 +58,7 @@ def fetch_and_store_evidence(
             url=a.url,
             domain=a.domain,
             title=a.title,
+            snippet=a.snippet,
             seendate=a.seendate,
             raw=getattr(a, "raw", None),
         )
