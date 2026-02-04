@@ -45,6 +45,8 @@ Establish a correct, production-ready project foundation before adding data or m
 **Why this matters**
 Correct packaging and testable entry points prevent import bugs, deployment issues, and brittle development later. This slice ensures the system can be extended safely.
 
+---
+
 ## Slice 1 — Database Foundation & CLI Initialization (Complete)
 
 **Purpose**  
@@ -73,6 +75,8 @@ This slice converts the project from a stateless API into a real, auditable syst
 - explicit lifecycle control via a CLI
 
 By introducing the database and repository pattern early, later slices can focus on **data logic, feature engineering, and modeling** without reworking infrastructure.
+
+---
 
 ## Slice 2 — Domain Reliability Prior (Complete)
 
@@ -106,6 +110,8 @@ This prior becomes the system’s first **stable credibility signal**:
 - easy to ablate during evaluation
 - independent of LLM judgment
 
+---
+
 ## Slice 3 — Evidence Ingestion Pipeline (Complete)
 
 **Purpose**  
@@ -137,3 +143,103 @@ This slice converts external news data into **auditable, queryable evidence**:
 - downstream feature engineering can rely on stable evidence invariants
 
 With this slice complete, the system now supports **real-world corroboration at scale** while remaining fully testable and reproducible.
+
+---
+
+## Slice 4 — Feature Extraction (Complete)
+
+**Purpose**  
+Transform raw evidence into interpretable, reproducible features that bridge evidence ingestion and credibility scoring.
+
+This slice formalizes the system’s **feature layer**, ensuring all downstream scoring is grounded in auditable, SQL-derived signals rather than opaque heuristics.
+
+---
+
+### What this slice does
+
+- Computes structured features over `evidence_items` and `source_priors`
+- Organizes features into semantic groups:
+  - volume
+  - source_quality
+  - temporal
+  - corroboration
+- Persists features as first-class rows in the `features` table
+- Exposes a CLI command to extract features for a completed run
+- Ensures **idempotent, deterministic feature computation**
+- Handles real-world edge cases:
+  - missing priors
+  - missing timestamps
+  - repeated domains
+  - empty evidence sets
+
+---
+
+### Feature Groups
+
+#### 1. Volume Features
+- `total_articles`  
+  Total number of evidence items retrieved for the run.
+- `unique_domains`  
+  Number of distinct source domains represented in the evidence.
+
+---
+
+#### 2. Source Quality Features
+- `weighted_prior_mean`  
+  Mean reliability prior across evidence items.  
+  Domains without priors default to **0.5 (unknown)**.
+- `high_reliability_ratio`  
+  Fraction of **unique domains** whose reliability prior exceeds the high-reliability threshold (≥ 0.7).  
+  This avoids overweighting a single prolific outlet.
+- `unknown_source_ratio`  
+  Fraction of evidence items whose domains have no known prior.
+
+---
+
+#### 3. Temporal Features
+- `recency_score`  
+  Mean exponential decay score based on publication time, with neutral defaults for missing timestamps.
+- `publication_span_hours`  
+  Time span between the earliest and latest published articles.
+- `missing_timestamp_ratio`  
+  Fraction of evidence items lacking publication timestamps.
+
+---
+
+#### 4. Corroboration Features
+- `domain_diversity`  
+  Shannon entropy of the domain distribution (higher = broader corroboration).
+- `max_domain_concentration`  
+  Fraction of evidence from the most common domain (higher = less diverse).
+
+---
+
+### Architecture Components
+
+- **`FeatureExtractor` (service)**  
+  Pure feature computation logic with deterministic SQL + Python aggregation.
+- **`FeatureRepository` (repo)**  
+  Persistence and retrieval of feature rows.
+- **Feature Engineering Orchestration**  
+  Ensures idempotent feature extraction per run.
+- **`trustlens extract-features` (CLI)**  
+  User-facing command to compute and persist features for a run.
+
+---
+
+### Why this matters
+
+This slice establishes the system’s **feature contract**:
+
+- Every feature is:
+  - traceable to data
+  - reproducible across runs
+  - inspectable via SQL
+- Feature semantics are explicit and test-backed
+- Statistical shortcuts (e.g., join duplication) are explicitly avoided
+- The system is now ready for:
+  - scoring
+  - calibration
+  - ablation
+  - evaluation
+

@@ -1,3 +1,4 @@
+# src/trustlens/db/schema.py
 from __future__ import annotations
 
 from datetime import datetime
@@ -6,6 +7,10 @@ from uuid import uuid4
 
 from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+def _uuid() -> str:
+    return str(uuid4())
 
 
 class Base(DeclarativeBase):
@@ -18,9 +23,8 @@ class Run(Base):
     """
     __tablename__ = "runs"
 
-    run_id: Mapped[str] = mapped_column(String, primary_key=True)
+    run_id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
 
-    # When this run was created
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -41,23 +45,15 @@ class EvidenceItem(Base):
     """
     __tablename__ = "evidence_items"
 
-    # ✅ FIX: generate UUID primary key automatically (Python-side default)
-    evidence_id: Mapped[str] = mapped_column(
-        String,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
-
+    evidence_id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
-    # When we ingested/retrieved it (the time we called GDELT)
     retrieved_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         default=datetime.utcnow,
     )
 
-    # When it was published/seen (if known)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -67,16 +63,13 @@ class EvidenceItem(Base):
     source: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "gdelt_doc"
     raw_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # DB row creation timestamp (separate from retrieved_at)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         default=datetime.utcnow,
     )
 
-    __table_args__ = (
-        UniqueConstraint("url", name="uq_evidence_items_url"),
-    )
+    __table_args__ = (UniqueConstraint("url", name="uq_evidence_items_url"),)
 
 
 class Feature(Base):
@@ -85,12 +78,7 @@ class Feature(Base):
     """
     __tablename__ = "features"
 
-    feature_id: Mapped[str] = mapped_column(
-        String,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
-
+    feature_id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -99,7 +87,7 @@ class Feature(Base):
         default=datetime.utcnow,
     )
 
-    feature_group: Mapped[str] = mapped_column(String, nullable=False)  # prior/corroboration/time
+    feature_group: Mapped[str] = mapped_column(String, nullable=False)
     feature_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     feature_value: Mapped[float] = mapped_column(Float, nullable=False)
 
@@ -110,11 +98,7 @@ class ModelVersion(Base):
     """
     __tablename__ = "model_versions"
 
-    model_version_id: Mapped[str] = mapped_column(
-        String,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
+    model_version_id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -122,8 +106,8 @@ class ModelVersion(Base):
         default=datetime.utcnow,
     )
 
-    name: Mapped[str] = mapped_column(String, nullable=False)  # human-friendly identifier
-    model_type: Mapped[str] = mapped_column(String, nullable=False)  # logreg/xgb/etc
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    model_type: Mapped[str] = mapped_column(String, nullable=False)
     calibration_method: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     artifact_uri: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -152,3 +136,30 @@ class SourcePrior(Base):
         nullable=False,
         default=datetime.utcnow,
     )
+
+
+class Score(Base):
+    """
+    Credibility score per run + model version.
+    """
+    __tablename__ = "scores"
+
+    score_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=False,
+    )
+    run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    model_version: Mapped[str] = mapped_column(String, nullable=False)
+
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    explanation_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    __table_args__ = (UniqueConstraint("run_id", "model_version", name="uq_scores_run_model"),)

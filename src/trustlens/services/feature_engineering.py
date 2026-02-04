@@ -13,7 +13,7 @@ class FeatureEngineeringService:
         self.feature_repo = feature_repo or FeatureRepository(db_session)
         self.extractor = feature_extractor or FeatureExtractor(db_session)
     
-    def compute_features(self, run_id: int) -> int:
+    def compute_features(self, run_id: str) -> int:
         """Extract and persist features for a run."""
         from trustlens.db.schema import Run
         run = self.db.query(Run).filter(Run.run_id == run_id).first()
@@ -25,6 +25,6 @@ class FeatureEngineeringService:
         self.feature_repo.insert_batch(features)
         return len(features)
     
-    def get_features(self, run_id: int):
+    def get_features(self, run_id: str):
         """Retrieve features for a run."""
         return self.feature_repo.get_by_run(run_id)
