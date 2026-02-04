@@ -64,6 +64,9 @@ def fetch_gdelt_articles(
     - Sync client (simple for CLI + tests)
     - Dependency injection via `client` makes it testable without real HTTP
     """
+    query = (query or "").strip()
+    if len(query) < 3:
+        return []
     max_records = max_records or settings.gdelt_max_records_default
     url = build_gdelt_doc_url(query=query, max_records=max_records)
 
@@ -75,7 +78,10 @@ def fetch_gdelt_articles(
     try:
         r = client.get(url)
         r.raise_for_status()
-        payload = r.json()
+        try:
+            payload = r.json()
+        except Exception:
+            return []
     finally:
         if close_client:
             client.close()

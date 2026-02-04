@@ -45,13 +45,19 @@ def train_model_cmd(
             feature_schema_version=feature_schema_version,
             calibrate=calibrate,
         )
+        summary = {
+            "model_id": model.model_id,
+            "dataset": model.dataset_name,
+            "schema": model.feature_schema_version,
+            "dataset_hash": model.dataset_hash[:12] + "...",
+        }
 
-    table = Table(title=f"Trained Model: {model.model_id}")
+    table = Table(title=f"Trained Model: {summary['model_id']}")
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="green")
-    table.add_row("dataset", model.dataset_name)
-    table.add_row("schema", model.feature_schema_version)
-    table.add_row("dataset_hash", model.dataset_hash[:12] + "...")
+    table.add_row("dataset", summary["dataset"])
+    table.add_row("schema", summary["schema"])
+    table.add_row("dataset_hash", summary["dataset_hash"])
     console.print(table)
 
 

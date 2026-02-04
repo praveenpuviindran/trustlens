@@ -516,3 +516,31 @@ This slice makes model quality **measurably better and more reliable**:
 - lr_v2 is a distinct, auditable step forward in model selection
 
 ---
+
+### Slice 11 Results Card (LIAR, 50-sample, real evidence)
+
+**Dataset + hash**  
+LIAR (test split, 50 samples), hash: `e1e50e511bb2ffd96ce4c038396cafc11f6dafac52131963cf895cfbf82ea8e7`
+
+**Models compared**
+- `baseline_v1`
+- `lr_v1`
+- `lr_v2`
+
+**Metrics (accuracy / F1 / AUROC / Brier / ECE)**
+- `baseline_v1`: 0.820 / 0.901 / 0.500 / 0.150 / 0.052
+- `lr_v1`: 0.820 / 0.901 / 0.500 / 0.162 / 0.120
+- `lr_v2`: 0.820 / 0.901 / 0.500 / 0.162 / 0.120
+
+**Calibration summary (5-bin)**  
+Most predictions landed in the 0.6–0.8 bin; baseline calibration was strongest (lower ECE + Brier).
+
+**Top error buckets (observed)**
+- Evidence fetch timeouts → missing evidence (score relies on priors/volume only)
+- Sparse domain priors → weaker signal for LR models
+- Short/ambiguous claims → weak lexical overlap with evidence
+
+**Takeaway**
+Baseline remains stronger on this small real-evidence run. LR models need more data or stronger features to surpass baseline.
+
+---

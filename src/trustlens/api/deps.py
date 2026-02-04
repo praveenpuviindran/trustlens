@@ -26,7 +26,10 @@ def get_db() -> Generator[Session, None, None]:
 
 def get_evidence_fetcher() -> Callable[[str, int], list[dict]]:
     def _fetch(query_text: str, max_records: int) -> list[dict]:
-        articles = fetch_gdelt_articles(query=query_text, max_records=max_records)
+        try:
+            articles = fetch_gdelt_articles(query=query_text, max_records=max_records)
+        except Exception:
+            return []
         return [
             {
                 "url": a.url,
