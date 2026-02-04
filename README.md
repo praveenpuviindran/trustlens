@@ -243,3 +243,36 @@ This slice establishes the system’s **feature contract**:
   - ablation
   - evaluation
 
+---
+
+## Slice 5 — Credibility Scoring + Calibration + Explanation (Complete)
+
+**Purpose**  
+Transform extracted features into a calibrated credibility score with clear, inspectable explanations.
+
+**What this slice does**
+- Computes a per-run credibility score in **[0, 1]** using a transparent weighted sum
+- Applies a deterministic calibration step to keep scores stable and comparable
+- Assigns a label: `credible`, `uncertain`, or `not_credible`
+- Persists results into a new `scores` table (one score per run + model version)
+- Surfaces top positive and negative feature contributions for interpretability
+- Adds a CLI command to score runs end-to-end
+
+**Scoring Model**
+- Baseline model: `baseline_v1`
+- Weighted signals:
+  - Positive: `weighted_prior_mean`, `domain_diversity`, `recency_score`, `unique_domains` (log1p)
+  - Negative: `max_domain_concentration`, `missing_timestamp_ratio`, `unknown_source_ratio`
+  - Neutral: `total_articles` (log1p)
+- Calibration:
+  - `calibrated = clamp(0.05 + 0.90 * raw_prob, 0, 1)`
+
+**CLI Usage (exact commands)**
+```bash
+trustlens init-db
+trustlens load-priors
+trustlens fetch-evidence --claim "COVID-19 vaccines are effective" --query "COVID vaccine effectiveness" --max-records 25
+# use the run_id printed by fetch-evidence
+trustlens extract-features --run-id <run_id>
+trustlens score-run --run-id <run_id> --model baseline_v1
+```
