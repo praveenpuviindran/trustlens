@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import typer
+from rich.console import Console
+from rich.table import Table
+from sqlalchemy.orm import Session, sessionmaker
 
 from trustlens.clients.hf_reliability_dataset import load_reliability_rows
 from trustlens.db.engine import build_engine
 from trustlens.db.init_db import init_db
 from trustlens.repos.source_priors_repo import SourcePriorsRepo
+from trustlens.services.feature_engineering import FeatureEngineeringService
+from trustlens.services.pipeline_evidence import fetch_and_store_evidence
 from trustlens.services.priors import build_prior_records
+from trustlens.services.scoring import MODEL_VERSION
 
 app = typer.Typer(help="TrustLens CLI (init DB, pipelines, evaluation).")
+console = Console()
 
 
 @app.command("hello")
@@ -29,7 +36,7 @@ def load_priors_cmd() -> None:
     Load domain reliability labels from HF and store as priors in DB.
     """
     engine = build_engine()
-    init_db(engine)  # safe + ensures source_priors exists
+    init_db(engine)
 
     rows = load_reliability_rows()
     priors = build_prior_records(rows)
@@ -38,29 +45,6 @@ def load_priors_cmd() -> None:
     n = repo.upsert_many(priors)
 
     typer.echo(f"✅ Loaded {n} domain priors into source_priors.")
-
-from __future__ import annotations
-
-import typer
-from sqlalchemy.orm import Session
-
-from trustlens.db.engine import build_engine
-from trustlens.db.init_db import init_db
-from trustlens.services.pipeline_evidence import fetch_and_store_evidence
-
-app = typer.Typer(help="TrustLens CLI (init DB, pipelines, evaluation).")
-
-
-@app.command()
-def hello() -> None:
-    typer.echo("hello")
-
-
-@app.command("init-db")
-def init_db_cmd() -> None:
-    engine = build_engine()
-    init_db(engine)
-    typer.echo("✅ Database initialized and reachable.")
 
 
 @app.command("fetch-evidence")
@@ -75,8 +59,6 @@ def fetch_evidence_cmd(
     engine = build_engine()
     init_db(engine)
 
-    from sqlalchemy.orm import sessionmaker
-
     SessionLocal = sessionmaker(bind=engine)
 
     with SessionLocal() as session:  # type: Session
@@ -90,3 +72,95 @@ def fetch_evidence_cmd(
 
     typer.echo(f"✅ Created run_id={res.run_id}")
     typer.echo(f"✅ Inserted evidence_items={res.evidence_inserted}")
+
+
+@app.command("extract-features")
+def extract_features_cmd(
+    run_id: str = typer.Option(..., "--run-id", help="Run ID"),
+) -> None:
+    """Extract features for a run."""
+    console.print(f"[bold blue]Extracting features for run_id={run_id}[/bold blue]")
+
+    engine = build_engine()
+    init_db(engine)
+    SessionLocal = sessionmaker(bind=engine)
+
+    try:
+        with SessionLocal() as session:  # type: Session
+            service = FeatureEngineeringService(session)
+            feature_count = service.compute_features(run_id)
+            features = service.get_features(run_id)
+
+        console.print(f"[green]✓[/green] Extracted {feature_count} features")
+
+        grouped = {}
+        for f in features:
+            grouped.setdefault(f.feature_group, []).append(f)
+
+        table = Table(title=f"Features for run_id={run_id}")
+        table.add_column("Group", style="cyan")
+        table.add_column("Feature", style="magenta")
+        table.add_column("Value", style="green", justify="right")
+
+        for group_name in sorted(grouped.keys()):
+            for i, f in enumerate(sorted(grouped[group_name], key=lambda x: x.feature_name)):
+                table.add_row(group_name if i == 0 else "", f.feature_name, f"{f.feature_value:.4f}")
+
+        console.print(table)
+    except ValueError as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise typer.Exit(1)
+
+
+@app.command("score-run")
+def score_run_cmd(
+    run_id: str = typer.Option(..., "--run-id", help="Run ID"),
+    model: str = typer.Option(MODEL_VERSION, "--model", help="Model version"),
+) -> None:
+    """Compute and persist credibility score for a run."""
+    console.print(f"[bold blue]Scoring run_id={run_id} (model={model})[/bold blue]")
+
+    engine = build_engine()
+    init_db(engine)
+    SessionLocal = sessionmaker(bind=engine)
+
+    try:
+        with SessionLocal() as session:  # type: Session
+            service = FeatureEngineeringService(session)
+            result = service.compute_score_for_run(run_id, model_version=model)
+
+        console.print(f"[green]✓[/green] score={result.score:.4f} label={result.label}")
+
+        table = Table(title="Top Contributions")
+        table.add_column("Type", style="cyan")
+        table.add_column("Feature", style="magenta")
+        table.add_column("Value", style="green", justify="right")
+        table.add_column("Contribution", style="yellow", justify="right")
+
+        for item in result.explanation.get("positive", []):
+            table.add_row(
+                "positive",
+                item["feature_name"],
+                f"{item['value']:.4f}",
+                f"{item['contribution']:.4f}",
+            )
+        for item in result.explanation.get("negative", []):
+            table.add_row(
+                "negative",
+                item["feature_name"],
+                f"{item['value']:.4f}",
+                f"{item['contribution']:.4f}",
+            )
+
+        console.print(table)
+    except ValueError as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise typer.Exit(1)
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":
+    main()

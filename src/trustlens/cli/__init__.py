@@ -25,6 +25,13 @@ class FeatureEngineeringService:
         self.feature_repo.insert_batch(features)
         return len(features)
     
-    def get_features(self, run_id: int):
-        """Retrieve features for a run."""
-        return self.feature_repo.get_by_run(run_id)
+def get_features(self, run_id: int):
+    """Retrieve features for a run."""
+    return self.feature_repo.get_by_run(run_id)
+
+
+def main() -> None:
+    """CLI entrypoint for the trustlens console script."""
+    from trustlens.cli.app import app
+
+    app()
