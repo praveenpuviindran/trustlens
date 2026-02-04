@@ -434,8 +434,43 @@ curl -X POST http://localhost:8000/runs/<run_id>/chat \\
   -d '{"question":"Why was this labeled credible?"}'
 ```
 
+---
+
+## Slice 10 — Real-World Benchmark + Ablations (Complete)
+
+**Purpose**  
+Benchmark TrustLens on real labeled claim datasets, compare models, and quantify ablations.
+
+**What this slice does**
+- Loads real datasets from Hugging Face (LIAR + FEVER)
+- Maps labels to binary credible/not_credible deterministically
+- Compares `baseline_v1` vs `lr_v1`
+- Runs feature-group ablations and reports metric deltas
+- Produces reproducible JSON/CSV reports + calibration plots
+
+**What I implemented**
+- Dataset loader with deterministic label mapping + hash
+- Benchmark runner with offline mode and ablations
+- CLI: `trustlens benchmark`
+- Calibration plots saved to `reports/benchmarks/...`
+- Offline tests with synthetic features (no network)
+
+**CLI Examples**
+```bash
+# Benchmark baseline vs lr on LIAR
+trustlens benchmark --dataset liar --split test --max-examples 500 --model baseline_v1 --model lr_v1 --max-records 25
+
+# Generate reports (saved under reports/benchmarks/<dataset>/)
+trustlens benchmark --dataset fever --split validation --max-examples 500 --model baseline_v1 --model lr_v1 --max-records 25
+
+# Interpret ablations: compare metrics across feature groups in the JSON report
+```
+
 ### Why this matters
-This slice turns TrustLens into an actual scoring system:
+This slice turns TrustLens into an actual scoring system with real-world, reproducible evaluation:
+- consistent benchmarking across datasets and models
+- ablation analysis to understand feature impact
+- auditable reports for regression tracking
 - the score is reproducible and testable (no LLM judgment)
 - calibration makes results stable and comparable
 - explanations make every score auditable and debuggable

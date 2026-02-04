@@ -19,6 +19,7 @@ dependencies = [
     "httpx>=0.25.0",
     "pydantic-settings>=2.0.0",
     "numpy>=1.17",
+    "matplotlib>=3.8.0",
 ]
 
 [project.optional-dependencies]
