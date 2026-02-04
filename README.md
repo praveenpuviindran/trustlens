@@ -248,31 +248,63 @@ This slice establishes the system’s **feature contract**:
 ## Slice 5 — Credibility Scoring + Calibration + Explanation (Complete)
 
 **Purpose**  
-Transform extracted features into a calibrated credibility score with clear, inspectable explanations.
+Convert extracted features into a **calibrated credibility score** with transparent, inspectable explanations.
 
-**What this slice does**
-- Computes a per-run credibility score in **[0, 1]** using a transparent weighted sum
-- Applies a deterministic calibration step to keep scores stable and comparable
-- Assigns a label: `credible`, `uncertain`, or `not_credible`
-- Persists results into a new `scores` table (one score per run + model version)
-- Surfaces top positive and negative feature contributions for interpretability
-- Adds a CLI command to score runs end-to-end
+### What this slice does
+- Computes a per-run credibility score in **[0, 1]** using a deterministic, fully inspectable baseline model
+- Applies a calibration transform so scores stay stable and comparable across runs
+- Produces a simple decision label: `credible`, `uncertain`, or `not_credible`
+- Persists results into a first-class `scores` table (one score per run + model version)
+- Produces feature-level explanations by surfacing the top positive and negative contributors
+- Adds a CLI command to score a run end-to-end after features exist
 
-**Scoring Model**
-- Baseline model: `baseline_v1`
-- Weighted signals:
-  - Positive: `weighted_prior_mean`, `domain_diversity`, `recency_score`, `unique_domains` (log1p)
-  - Negative: `max_domain_concentration`, `missing_timestamp_ratio`, `unknown_source_ratio`
-  - Neutral: `total_articles` (log1p)
-- Calibration:
-  - `calibrated = clamp(0.05 + 0.90 * raw_prob, 0, 1)`
+### Scoring model (baseline_v1)
+- Model id: `baseline_v1`
+- The raw score is computed as a transparent weighted combination of core signals.
 
-**CLI Usage (exact commands)**
+**Positive evidence signals**
+- `weighted_prior_mean`
+- `domain_diversity`
+- `recency_score`
+- `unique_domains` (log1p)
+
+**Negative risk signals**
+- `max_domain_concentration`
+- `missing_timestamp_ratio`
+- `unknown_source_ratio`
+
+**Neutral / stabilizer**
+- `total_articles` (log1p)
+
+### Calibration
+To avoid overly extreme scores from small evidence sets, the raw score is calibrated deterministically:
+
+- `calibrated = clamp(0.05 + 0.90 * raw_prob, 0, 1)`
+
+### Outputs
+- `score`: calibrated score in **[0, 1]**
+- `label`: `credible` / `uncertain` / `not_credible`
+- `explanations`: top positive + negative feature contributions (fully traceable to stored features)
+
+### CLI Usage (exact commands)
 ```bash
 trustlens init-db
 trustlens load-priors
-trustlens fetch-evidence --claim "COVID-19 vaccines are effective" --query "COVID vaccine effectiveness" --max-records 25
-# use the run_id printed by fetch-evidence
+
+trustlens fetch-evidence --claim "COVID-19 vaccines are effective" \
+  --query "COVID vaccine effectiveness" --max-records 25
+
 trustlens extract-features --run-id <run_id>
+
 trustlens score-run --run-id <run_id> --model baseline_v1
 ```
+
+### Why this matters
+This slice turns TrustLens into an actual scoring system:
+- the score is reproducible and testable (no LLM judgment)
+- calibration makes results stable and comparable
+- explanations make every score auditable and debuggable
+- the pipeline is now evidence → features → score, ready for evaluation and model iteration
+
+---
+
