@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from trustlens.services.feature_extraction import FeatureExtractor
 from trustlens.repos.feature_repo import FeatureRepository
 from trustlens.repos.score_repo import ScoreRepository
-from trustlens.services.scoring import BaselineScorer, MODEL_VERSION, ScoreResult
+from trustlens.services.scoring import BaselineScorer, MODEL_VERSION, ScoreResult, TrainedModelScorer
 
 
 class FeatureEngineeringService:
@@ -45,8 +45,12 @@ class FeatureEngineeringService:
         if self.feature_repo.count_by_run(run_id) == 0:
             raise ValueError(f"Run {run_id} has no computed features")
 
-        scorer = BaselineScorer()
-        result = scorer.score_run(run_id, self.db)
+        if model_version == MODEL_VERSION:
+            scorer = BaselineScorer()
+            result = scorer.score_run(run_id, self.db)
+        else:
+            scorer = TrainedModelScorer(self.db)
+            result = scorer.score_run(run_id, model_version)
 
         score_repo = ScoreRepository(self.db)
         score_repo.upsert_score(

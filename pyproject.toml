@@ -18,6 +18,7 @@ dependencies = [
     "datasets>=2.14.0",
     "httpx>=0.25.0",
     "pydantic-settings>=2.0.0",
+    "numpy>=1.17",
 ]
 
 [project.optional-dependencies]

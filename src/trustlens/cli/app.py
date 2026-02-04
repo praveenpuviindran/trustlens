@@ -16,6 +16,8 @@ from trustlens.services.scoring import MODEL_VERSION
 from trustlens.cli.evaluate import evaluate_cmd
 from trustlens.cli.explain import explain_cmd
 from trustlens.cli.chat import chat_cmd
+from trustlens.cli.train_model import train_model_cmd
+from trustlens.cli.list_models import list_models_cmd
 
 app = typer.Typer(help="TrustLens CLI (init DB, pipelines, evaluation).")
 console = Console()
@@ -164,6 +166,8 @@ def score_run_cmd(
 app.command("evaluate")(evaluate_cmd)
 app.command("explain-run")(explain_cmd)
 app.command("chat-run")(chat_cmd)
+app.command("train-model")(train_model_cmd)
+app.command("list-models")(list_models_cmd)
 
 
 def main() -> None:

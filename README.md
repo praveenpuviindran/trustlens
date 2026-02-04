@@ -371,6 +371,32 @@ This slice makes the system interpretable and safe:
 - no hallucinated claims
 - chat answers remain auditable and deterministic
 
+---
+
+## Slice 8 — Offline Trainable Model + Versioning + Threshold Tuning (Complete)
+
+**Purpose**  
+Add a deterministic, offline training workflow that learns weights from stored features and registers versioned models.
+
+**What this slice does**
+- Trains a logistic regression model from feature vectors
+- Tunes two thresholds for 3-way labels (credible / uncertain / not_credible)
+- Stores model weights, thresholds, and validation metrics in DB
+- Enables scoring with trained model IDs via `score-run`
+
+**What I implemented**
+- `trained_models` table + repository
+- `FeatureVectorizer` for canonical feature ordering
+- `ModelTrainer` with deterministic training and threshold tuning
+- CLI: `trustlens train-model` and `trustlens list-models`
+- Tests for vectorization, training determinism, thresholds, and scoring
+
+**Why this matters**
+This slice makes scoring **learnable and reproducible**:
+- models are versioned and auditable
+- thresholds are tuned for operational labels
+- trained weights can be evaluated and compared offline
+
 ### Why this matters
 This slice turns TrustLens into an actual scoring system:
 - the score is reproducible and testable (no LLM judgment)

@@ -210,3 +210,24 @@ class Explanation(Base):
     user_question: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     response_text: Mapped[str] = mapped_column(Text, nullable=False)
     context_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class TrainedModel(Base):
+    """
+    Trained model registry for offline logistic regression.
+    """
+    __tablename__ = "trained_models"
+
+    model_id: Mapped[str] = mapped_column(String, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+    feature_schema_version: Mapped[str] = mapped_column(String, nullable=False)
+    feature_names_json: Mapped[str] = mapped_column(Text, nullable=False)
+    weights_json: Mapped[str] = mapped_column(Text, nullable=False)
+    thresholds_json: Mapped[str] = mapped_column(Text, nullable=False)
+    metrics_json: Mapped[str] = mapped_column(Text, nullable=False)
+    dataset_name: Mapped[str] = mapped_column(String, nullable=False)
+    dataset_hash: Mapped[str] = mapped_column(String, nullable=False)

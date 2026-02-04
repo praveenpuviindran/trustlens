@@ -9,6 +9,8 @@ import math
 from sqlalchemy.orm import Session
 
 from trustlens.db.schema import Feature
+from trustlens.repos.trained_model_repo import TrainedModelRepository
+import json
 
 
 DEFAULTS: Dict[str, float] = {
@@ -129,3 +131,67 @@ class BaselineScorer:
         label = self._label(calibrated)
         explanation = self._explanation(features, contributions)
         return ScoreResult(run_id=run_id, score=calibrated, label=label, explanation=explanation)
+
+
+class TrainedModelScorer:
+    """Scoring with trained logistic regression model."""
+
+    def __init__(self, session: Session):
+        self.session = session
+        self.repo = TrainedModelRepository(session)
+
+    def score_run(self, run_id: str, model_id: str) -> ScoreResult:
+        model = self.repo.get(model_id)
+        if not model:
+            raise ValueError(f"Model {model_id} not found")
+
+        feature_names = json.loads(model.feature_names_json)
+        weights_map = json.loads(model.weights_json)
+        intercept = float(weights_map.get("intercept", 0.0))
+
+        rows = (
+            self.session.query(Feature.feature_name, Feature.feature_value)
+            .filter(Feature.run_id == run_id)
+            .all()
+        )
+        feature_map = {name: float(value) for name, value in rows}
+        values = [float(feature_map.get(name, 0.0)) for name in feature_names]
+        weights = [float(weights_map.get(name, 0.0)) for name in feature_names]
+
+        logit = intercept + sum(w * v for w, v in zip(weights, values))
+        prob = 1.0 / (1.0 + math.exp(-max(min(logit, 50), -50)))
+
+        thresholds = json.loads(model.thresholds_json)
+        t_lo = float(thresholds.get("t_lo", 0.33))
+        t_hi = float(thresholds.get("t_hi", 0.67))
+
+        if prob >= t_hi:
+            label = "credible"
+        elif prob <= t_lo:
+            label = "not_credible"
+        else:
+            label = "uncertain"
+
+        contributions = []
+        for name, weight, value in zip(feature_names, weights, values):
+            contributions.append(
+                {
+                    "feature_name": name,
+                    "weight": float(weight),
+                    "value": float(value),
+                    "contribution": float(weight * value),
+                }
+            )
+
+        positives = [c for c in contributions if c["contribution"] >= 0]
+        negatives = [c for c in contributions if c["contribution"] < 0]
+        positives = sorted(positives, key=lambda x: x["contribution"], reverse=True)[:3]
+        negatives = sorted(negatives, key=lambda x: x["contribution"])[:3]
+
+        explanation = {
+            "intercept": float(intercept),
+            "positive": positives,
+            "negative": negatives,
+        }
+
+        return ScoreResult(run_id=run_id, score=float(prob), label=label, explanation=explanation)
