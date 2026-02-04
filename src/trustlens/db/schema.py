@@ -164,3 +164,24 @@ class Score(Base):
     )
 
     __table_args__ = (UniqueConstraint("run_id", "model_version", name="uq_scores_run_model"),)
+
+
+class EvalResult(Base):
+    """
+    Evaluation result per run and dataset entry.
+    """
+    __tablename__ = "eval_results"
+
+    eval_id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    run_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    dataset_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    claim_id: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[int] = mapped_column(Integer, nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    predicted_label: Mapped[str] = mapped_column(String, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )

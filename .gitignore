@@ -33,3 +33,12 @@ __pycache__/
 data/*.duckdb
 *.duckdb
 .pytest_cache/
+
+# Eval datasets + reports
+!data/
+!data/eval/
+!data/eval/*.csv
+reports/
+reports/*.json
+!reports/
+!reports/.gitkeep

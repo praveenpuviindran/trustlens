@@ -299,6 +299,52 @@ trustlens extract-features --run-id <run_id>
 trustlens score-run --run-id <run_id> --model baseline_v1
 ```
 
+---
+
+## Slice 6 — Evaluation Harness + Metrics (Complete)
+
+**Purpose**  
+Add a deterministic evaluation harness that runs the full pipeline on labeled claims and reports metrics + calibration behavior.
+
+**What this slice does**
+- Loads a local labeled dataset of claims (CSV)
+- Runs the end-to-end pipeline per claim:
+  - create run
+  - fetch evidence
+  - extract features
+  - score + explain
+- Persists evaluation results to `eval_results`
+- Computes metrics:
+  - accuracy, precision, recall, f1
+  - confusion matrix (tp, fp, tn, fn)
+  - Brier score
+  - AUROC (when class variety exists)
+  - 5-bin calibration summary
+
+**What I implemented**
+- `EvalResult` schema + repository
+- Evaluation service with pure metric computation
+- CLI: `trustlens evaluate` with Rich output + JSON report
+- Sample dataset at `data/eval/sample_claims.csv`
+- Deterministic integration tests with mocked evidence
+
+**Label Mapping Rule**
+For metrics, predicted labels are mapped as:
+- `credible` → 1
+- `not_credible` → 0
+- `uncertain` → 0
+
+**CLI Usage (exact commands)**
+```bash
+trustlens evaluate --dataset data/eval/sample_claims.csv --dataset-name sample_v1 --max-records 25
+```
+
+**Why this matters**
+This slice makes scoring measurable:
+- you can quantify performance over labeled claims
+- calibration quality becomes visible
+- results are reproducible and audit-friendly
+
 ### Why this matters
 This slice turns TrustLens into an actual scoring system:
 - the score is reproducible and testable (no LLM judgment)
@@ -307,4 +353,3 @@ This slice turns TrustLens into an actual scoring system:
 - the pipeline is now evidence → features → score, ready for evaluation and model iteration
 
 ---
-

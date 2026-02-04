@@ -1,0 +1,21 @@
+claim_id,claim_text,query_text,label
+1,"COVID-19 vaccines reduce severe illness","COVID-19 vaccines reduce severe illness",1
+2,"Climate change increases extreme heat events","climate change extreme heat events",1
+3,"The moon is made of cheese","moon made of cheese",0
+4,"Regular exercise lowers blood pressure","regular exercise lowers blood pressure",1
+5,"Drinking bleach cures infections","drinking bleach cures infections",0
+6,"Wildfires have increased in frequency in recent decades","wildfires increased frequency recent decades",1
+7,"5G networks cause widespread illness","5G networks cause illness",0
+8,"The Earth orbits the Sun","Earth orbits the Sun",1
+9,"Humans can breathe underwater without equipment","humans breathe underwater without equipment",0
+10,"Vaccines contain microchips","vaccines contain microchips",0
+11,"Smoking increases risk of lung cancer","smoking increases risk of lung cancer",1
+12,"The Great Wall of China is visible from the Moon","Great Wall visible from Moon",0
+13,"Antibiotics are effective against bacterial infections","antibiotics effective against bacteria",1
+14,"Antibiotics cure viral infections","antibiotics cure viral infections",0
+15,"Global sea levels are rising","global sea levels rising",1
+16,"Chocolate improves night vision","chocolate improves night vision",0
+17,"Handwashing reduces transmission of infections","handwashing reduces transmission",1
+18,"Lightning never strikes the same place twice","lightning never strikes same place twice",0
+19,"Renewable energy reduces carbon emissions","renewable energy reduces carbon emissions",1
+20,"Humans only use 10 percent of their brains","humans only use ten percent of brain",0

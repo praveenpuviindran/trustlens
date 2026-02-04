@@ -13,6 +13,7 @@ from trustlens.services.feature_engineering import FeatureEngineeringService
 from trustlens.services.pipeline_evidence import fetch_and_store_evidence
 from trustlens.services.priors import build_prior_records
 from trustlens.services.scoring import MODEL_VERSION
+from trustlens.cli.evaluate import evaluate_cmd
 
 app = typer.Typer(help="TrustLens CLI (init DB, pipelines, evaluation).")
 console = Console()
@@ -156,6 +157,9 @@ def score_run_cmd(
     except ValueError as e:
         console.print(f"[red]✗[/red] Error: {e}")
         raise typer.Exit(1)
+
+
+app.command("evaluate")(evaluate_cmd)
 
 
 def main() -> None:
