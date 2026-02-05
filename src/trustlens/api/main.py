@@ -23,12 +23,12 @@ limit = int(os.getenv("RATE_LIMIT_PER_MIN", settings.rate_limit_per_min))
 app.state.rate_limiter = RateLimiter(limit_per_min=limit)
 
 # Local dev CORS (same-origin in production)
-cors_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
+cors_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
 cors_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -64,14 +64,12 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.get("/health")
 def health_root() -> dict:
-    return health()
+    return {"status": "healthy"}
 
 
 @app.get("/")
 def index():
-    if INDEX_FILE.exists():
-        return FileResponse(INDEX_FILE)
-    return {"detail": "UI not built"}
+    return {"ok": True, "service": "trustlens", "docs": "/docs"}
 
 
 @app.get("/{full_path:path}")

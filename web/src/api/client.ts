@@ -5,7 +5,8 @@ import type {
   EvidenceItem,
   ExplanationResponse,
   ChatResponse,
-  ModelListResponse
+  ModelListResponse,
+  HealthResponse
 } from '../types'
 
 const RAW_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -41,5 +42,8 @@ export const api = {
   },
   async getModels(): Promise<ModelListResponse> {
     return request('/models')
+  },
+  async getHealth(): Promise<HealthResponse> {
+    return request('/health')
   }
 }

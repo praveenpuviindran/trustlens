@@ -9,8 +9,4 @@ def test_health():
     assert r.status_code == 200
 
     payload = r.json()
-    assert payload["status"] == "ok"
-
-    # DB block is now part of the health contract in Slice 1
-    assert "db" in payload
-    assert payload["db"]["ok"] is True
+    assert payload["status"] == "healthy"

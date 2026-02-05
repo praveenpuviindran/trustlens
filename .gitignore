@@ -49,6 +49,8 @@ reports/benchmarks/
 web/node_modules/
 web/dist/
 web/.env.local
+web/.env
+web/.env.*
 
 # Built frontend assets (kept in container build)
 src/trustlens/api/static/assets/

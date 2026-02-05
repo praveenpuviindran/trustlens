@@ -7,7 +7,7 @@ from trustlens.api import main as main_mod
 
 
 def test_cors_env_allows_origin(monkeypatch):
-    monkeypatch.setenv("CORS_ORIGINS", "https://example.com")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://example.com")
     # reload app module to pick up env
     import importlib
     importlib.reload(main_mod)
@@ -22,4 +22,4 @@ def test_cors_env_allows_origin(monkeypatch):
     assert res.headers.get("access-control-allow-origin") == "https://example.com"
 
     # restore for other tests
-    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)

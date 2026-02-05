@@ -24,5 +24,5 @@ def _relax_rate_limit():
 @pytest.fixture(autouse=True)
 def _reset_cors(monkeypatch):
     # Ensure default CORS env for tests
-    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "http://localhost:5173")
     yield

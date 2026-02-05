@@ -667,14 +667,14 @@ One App Runner service can now host both the API and UI, simplifying deployment 
 4. Build command: `npm run build`
 5. Output directory: `dist`
 6. Environment variables:
-   - `VITE_API_BASE=https://<your-render-service>.onrender.com/api`
+   - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com`
 
 **Render (API)**
 1. Create a new Web Service from this GitHub repo.
 2. Build command: `python3 -m pip install -U pip && python3 -m pip install -e .`
 3. Start command: `python3 -m uvicorn api.main:app --host 0.0.0.0 --port $PORT` (or use `scripts/render_start.sh`)
 4. Environment variables:
-   - `CORS_ORIGINS=https://<your-pages-site>.pages.dev`
+   - `ALLOWED_ORIGINS=https://<your-pages-site>.pages.dev`
    - `DATABASE_URL` (optional; if unset, DuckDB is used for local/dev)
 5. Python version: 3.11.x recommended (pinned via `runtime.txt` and `.python-version`).
 6. Note: Render free tier sleeps on idle, first request may be slow.
@@ -683,3 +683,25 @@ One App Runner service can now host both the API and UI, simplifying deployment 
 User opens the Pages URL, submits a claim/query, and sees score/evidence/explanation/chat via the Render API.
 
 ---
+
+## Local Dev (Render + Pages style)
+
+**Backend**
+```bash
+uvicorn trustlens.api.main:app --reload
+```
+
+**Frontend**
+```bash
+cd web
+npm install
+npm run dev
+```
+
+**Environment variables**
+- Backend: `ALLOWED_ORIGINS=http://localhost:5173`
+- Frontend: `VITE_API_BASE_URL=http://localhost:8000`
+
+**Deployed examples**
+- Backend (Render): `https://<your-render-service>.onrender.com`
+- Frontend (Pages): `https://<your-pages-site>.pages.dev`

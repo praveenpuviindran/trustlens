@@ -49,3 +49,7 @@ export type ChatResponse = {
 export type ModelListResponse = {
   models: string[]
 }
+
+export type HealthResponse = {
+  status: string
+}

@@ -19,11 +19,18 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [models, setModels] = useState<string[]>(defaultModels)
+  const [backendStatus, setBackendStatus] = useState('unknown')
 
   const runId = run?.run_id || ''
 
   useEffect(() => {
     api.getModels().then(r => setModels(r.models)).catch(() => setModels(defaultModels))
+  }, [])
+
+  useEffect(() => {
+    api.getHealth()
+      .then(r => setBackendStatus(r.status))
+      .catch(() => setBackendStatus('unreachable'))
   }, [])
 
   useEffect(() => {
@@ -125,6 +132,7 @@ function App() {
       <header className="header">
         <h1>TrustLens Demo</h1>
         <p>Submit a claim, score it, and inspect evidence + explanations.</p>
+        <p className="muted">Backend status: {backendStatus}</p>
       </header>
 
       <section className="card">
