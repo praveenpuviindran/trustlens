@@ -613,3 +613,31 @@ This slice provides a minimal, production-aligned demo surface:
 - deterministic behavior on top of DS pipeline
 
 ---
+
+## Slice 14 — Single-Service AWS Deployment (Complete)
+
+**Purpose**  
+Package API + UI into a single deployable service (App Runner + RDS Postgres).
+
+**What this slice does**
+- Serves built Vite UI from FastAPI (SPA fallback)
+- Namespaces API routes under `/api`
+- Adds Docker packaging and App Runner docs
+- Supports `DATABASE_URL` for Postgres, with DuckDB fallback
+
+**What I implemented**
+- Static assets served at `/assets`, SPA fallback to `/`
+- `/api/models` and `/api/health` endpoints
+- Dockerfile + .dockerignore
+- Deployment docs: `docs/deploy/aws_app_runner.md`
+
+**Deployment (single service)**
+```bash
+docker build -t trustlens .
+docker run -p 8000:8000 -e DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:5432/DB trustlens
+```
+
+**Why this matters**
+One App Runner service can now host both the API and UI, simplifying deployment and ops.
+
+---

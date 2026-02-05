@@ -45,7 +45,7 @@ def test_models_endpoint_and_cors(tmp_path):
     app.dependency_overrides[get_db] = _db_override
     client = TestClient(app)
 
-    res = client.get("/models")
+    res = client.get("/api/models")
     assert res.status_code == 200
     data = res.json()
     assert "baseline_v1" in data["models"]
@@ -53,7 +53,7 @@ def test_models_endpoint_and_cors(tmp_path):
 
     # CORS preflight
     res = client.options(
-        "/models",
+        "/api/models",
         headers={
             "Origin": "http://localhost:5173",
             "Access-Control-Request-Method": "GET",

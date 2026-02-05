@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.duckdb
+reports/
+data/hf_cache/
+web/node_modules/
+web/dist/
+web/.env.local

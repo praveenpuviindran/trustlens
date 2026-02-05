@@ -8,10 +8,11 @@ import type {
   ModelListResponse
 } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
+const API_BASE = `${API_URL}/api`
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options
   })

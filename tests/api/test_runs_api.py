@@ -49,7 +49,7 @@ def test_post_runs_baseline(tmp_path):
 
     client = TestClient(app)
     res = client.post(
-        "/runs",
+        "/api/runs",
         json={
             "claim_text": "Test claim",
             "query_text": "Test query",
@@ -118,7 +118,7 @@ def test_post_runs_trained_model(tmp_path):
 
     client = TestClient(app)
     res = client.post(
-        "/runs",
+        "/api/runs",
         json={
             "claim_text": "Test claim",
             "query_text": "Test query",

@@ -61,7 +61,7 @@ def test_chat_endpoint(tmp_path):
     app.dependency_overrides[get_evidence_fetcher] = lambda: lambda q, n: []
 
     client = TestClient(app)
-    res = client.post(f"/runs/{run.run_id}/chat", json={"question": "What is the claim?"})
+    res = client.post(f"/api/runs/{run.run_id}/chat", json={"question": "What is the claim?"})
     assert res.status_code == 200
     assert res.json()["answer"] == "CHAT"
 

@@ -26,6 +26,8 @@ def build_engine(db_url: Optional[str] = None) -> Engine:
     - CLI/API should default to settings.DB_URL
     """
     url = db_url or os.getenv("DATABASE_URL") or settings.db_url
+    if url.startswith("postgresql"):
+        return create_engine(url, future=True, pool_pre_ping=True)
     return create_engine(url, future=True)
 
 
