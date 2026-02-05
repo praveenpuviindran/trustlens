@@ -652,3 +652,28 @@ python scripts/smoke_test.py
 One App Runner service can now host both the API and UI, simplifying deployment and ops.
 
 ---
+
+## Free Deployment (Cloudflare Pages + Render)
+
+**Cloudflare Pages (UI)**
+1. Create a new Pages project from this GitHub repo.
+2. Framework preset: **Vite**
+3. Root directory: `web`
+4. Build command: `npm run build`
+5. Output directory: `dist`
+6. Environment variables:
+   - `VITE_API_BASE=https://<your-render-service>.onrender.com/api`
+
+**Render (API)**
+1. Create a new Web Service from this GitHub repo.
+2. Build command: `pip install -e .`
+3. Start command: `uvicorn trustlens.api.main:app --host 0.0.0.0 --port $PORT`
+4. Environment variables:
+   - `CORS_ORIGINS=https://<your-pages-site>.pages.dev`
+   - `DATABASE_URL` (optional; if unset, DuckDB is used for local/dev)
+5. Note: Render free tier sleeps on idle, first request may be slow.
+
+**Expected public UX**
+User opens the Pages URL, submits a claim/query, and sees score/evidence/explanation/chat via the Render API.
+
+---

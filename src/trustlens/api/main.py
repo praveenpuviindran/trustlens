@@ -23,12 +23,11 @@ limit = int(os.getenv("RATE_LIMIT_PER_MIN", settings.rate_limit_per_min))
 app.state.rate_limiter = RateLimiter(limit_per_min=limit)
 
 # Local dev CORS (same-origin in production)
+cors_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
+cors_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +55,7 @@ def health() -> dict:
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    limiter: RateLimiter = app.state.rate_limiter
+    limiter: RateLimiter = request.app.state.rate_limiter
     client_ip = request.client.host if request.client else "unknown"
     if not limiter.allow(client_ip):
         return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
