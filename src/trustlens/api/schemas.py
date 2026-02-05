@@ -93,3 +93,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     run_id: str
     answer: str
+
+
+class ModelListResponse(BaseModel):
+    models: list[str]

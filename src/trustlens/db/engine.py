@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+import os
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -24,7 +25,7 @@ def build_engine(db_url: Optional[str] = None) -> Engine:
     - tests need in-memory or temp DBs
     - CLI/API should default to settings.DB_URL
     """
-    url = db_url or settings.db_url
+    url = db_url or os.getenv("DATABASE_URL") or settings.db_url
     return create_engine(url, future=True)
 
 

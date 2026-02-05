@@ -1,0 +1,93 @@
+:root {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #111;
+  background: #f7f7f4;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+.header h1 {
+  margin: 0 0 6px 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e6e3dc;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 18px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+textarea, input, select {
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 6px;
+  border: 1px solid #ddd8cc;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fafaf7;
+}
+
+button {
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: #1f2937;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.row.space {
+  align-items: center;
+  justify-content: space-between;
+  grid-template-columns: 1fr auto;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.muted {
+  color: #666;
+}
+
+.error {
+  color: #b00020;
+}
+
+.chat {
+  margin-top: 10px;
+  padding: 12px;
+  background: #f3f1ea;
+  border-radius: 6px;
+}

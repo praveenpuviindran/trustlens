@@ -44,3 +44,8 @@ reports/*.json
 !reports/
 !reports/.gitkeep
 reports/benchmarks/
+
+# Web
+web/node_modules/
+web/dist/
+web/.env.local

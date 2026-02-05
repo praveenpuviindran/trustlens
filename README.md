@@ -577,3 +577,39 @@ This slice makes model evaluation **reproducible and explainable**:
 - error artifacts support targeted iteration
 
 ---
+
+## Slice 13 — Minimal Web Demo UI (Complete)
+
+**Purpose**  
+Provide a thin, reliable demo UI over the existing API without changing DS logic.
+
+**What this slice does**
+- Adds a small Vite + React UI for submitting claims and viewing results
+- Supports model selection, evidence display, explanations, and chat
+- Enables CORS for local dev and exposes `/models` for model discovery
+- Makes DB configurable via `DATABASE_URL`
+
+**What I implemented**
+- `web/` Vite app with typed API client and UI states (loading/error/success)
+- `/models` API endpoint
+- CORS middleware for localhost dev
+- `.env.example` for frontend API URL
+
+**Local run**
+```bash
+# Backend (FastAPI)
+DATABASE_URL=duckdb:///data/trustlens.duckdb uvicorn trustlens.api.main:app --reload
+
+# Frontend (Vite)
+cd web
+npm install
+npm run dev
+```
+
+**Why this matters**
+This slice provides a minimal, production-aligned demo surface:
+- one API server
+- one static frontend
+- deterministic behavior on top of DS pipeline
+
+---
