@@ -56,6 +56,7 @@ def fetch_gdelt_articles(
     query: str,
     max_records: int | None = None,
     client: httpx.Client | None = None,
+    timeout_s: float | None = None,
 ) -> list[GdeltArticle]:
     """
     Pull articles from the GDELT DOC API.
@@ -72,7 +73,7 @@ def fetch_gdelt_articles(
 
     close_client = False
     if client is None:
-        client = httpx.Client(timeout=settings.gdelt_timeout_s)
+        client = httpx.Client(timeout=timeout_s or settings.gdelt_timeout_s)
         close_client = True
 
     try:

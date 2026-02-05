@@ -205,7 +205,7 @@ function App() {
           </div>
 
           <div>
-            <h3>Explanation</h3>
+            <h3>Grounded Explanation (deterministic)</h3>
             {explanation ? (
               <p>{explanation.response_text}</p>
             ) : (
@@ -217,7 +217,7 @@ function App() {
 
       {run && (
         <section className="card">
-          <h2>Chat</h2>
+          <h2>Grounded Q&A (deterministic)</h2>
           <input value={chatQ} onChange={(e) => setChatQ(e.target.value)} placeholder="Ask about this run" />
           <button disabled={loading || !chatQ.trim()} onClick={onChat}>Ask</button>
           {chatA && <div className="chat"><strong>Answer:</strong> {chatA}</div>}

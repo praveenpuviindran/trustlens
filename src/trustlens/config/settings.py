@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     gdelt_timeout_s: float = 20.0
     gdelt_max_records_default: int = 50
 
+    # Deployment safety defaults
+    evidence_timeout_s: float = 10.0
+    max_records_cap: int = 50
+    rate_limit_per_min: int = 30
+
     # LLM explanation settings (default stub for deterministic tests)
     llm_provider: str = "stub"
     llm_model_name: str | None = None

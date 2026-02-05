@@ -624,6 +624,7 @@ Package API + UI into a single deployable service (App Runner + RDS Postgres).
 - Namespaces API routes under `/api`
 - Adds Docker packaging and App Runner docs
 - Supports `DATABASE_URL` for Postgres, with DuckDB fallback
+- Uses StubLLMClient by default (deterministic explanations/Q&A; no paid APIs)
 
 **What I implemented**
 - Static assets served at `/assets`, SPA fallback to `/`
@@ -636,6 +637,16 @@ Package API + UI into a single deployable service (App Runner + RDS Postgres).
 docker build -t trustlens .
 docker run -p 8000:8000 -e DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:5432/DB trustlens
 ```
+
+**Smoke test**
+```bash
+python scripts/smoke_test.py
+```
+
+**Deployment safety env vars**
+- `EVIDENCE_TIMEOUT_S` (default 10)
+- `MAX_RECORDS_CAP` (default 50)
+- `RATE_LIMIT_PER_MIN` (default 30)
 
 **Why this matters**
 One App Runner service can now host both the API and UI, simplifying deployment and ops.

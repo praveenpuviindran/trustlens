@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,8 +31,11 @@ from trustlens.repos.trained_model_repo import TrainedModelRepository
 from trustlens.services.feature_engineering import FeatureEngineeringService
 from trustlens.services.llm_explainer import LLMExplainer
 from trustlens.services.pipeline_evidence import create_run
+from trustlens.config.settings import settings
+import os
 
 router = APIRouter(prefix="/runs", tags=["runs"])
+logger = logging.getLogger("trustlens.api")
 
 
 def _top_contributions(expl: dict) -> list[ContributionOut]:
@@ -56,6 +61,9 @@ def create_run_endpoint(
     llm_client=Depends(get_llm),
 ):
     try:
+        t0 = time.perf_counter()
+        cap = int(os.getenv("MAX_RECORDS_CAP", settings.max_records_cap))
+        max_records = min(payload.max_records, cap)
         query_text = payload.query_text or payload.claim_text
         run_id = create_run(session, claim_text=payload.claim_text, query_text=query_text)
 
@@ -65,7 +73,9 @@ def create_run_endpoint(
             session.commit()
 
         evidence_repo = EvidenceRepo(session.get_bind())
-        articles = evidence_fetcher(query_text, payload.max_records)
+        t_fetch = time.perf_counter()
+        articles = evidence_fetcher(query_text, max_records)
+        t_fetch_done = time.perf_counter()
         for a in articles:
             evidence_repo.upsert_from_gdelt(
                 session=session,
@@ -80,17 +90,25 @@ def create_run_endpoint(
         session.commit()
 
         service = FeatureEngineeringService(session)
+        t_feat = time.perf_counter()
         service.compute_features(run_id)
+        t_feat_done = time.perf_counter()
+        t_score = time.perf_counter()
         score_result = service.compute_score_for_run(run_id, model_version=payload.model_id)
+        t_score_done = time.perf_counter()
 
         explanation_summary = None
         if payload.include_explanation:
             explainer = LLMExplainer(session, llm_client)
+            t_explain = time.perf_counter()
             expl = explainer.explain_run(run_id, model_id=payload.model_id)
+            t_explain_done = time.perf_counter()
             bullets = [
                 f"{c.feature_name}: {c.contribution:.4f}" for c in _top_contributions(score_result.explanation)
             ]
             explanation_summary = ExplanationSummary(summary=expl.response_text, bullets=bullets)
+        else:
+            t_explain = t_explain_done = time.perf_counter()
 
         run = session.query(Run).filter(Run.run_id == run_id).first()
         if run:
@@ -103,6 +121,16 @@ def create_run_endpoint(
             .filter(EvidenceItem.run_id == run_id)
             .scalar()
             or 0
+        )
+        t1 = time.perf_counter()
+        logger.info(
+            "run_id=%s timings fetch=%.3f features=%.3f score=%.3f explain=%.3f total=%.3f",
+            run_id,
+            t_fetch_done - t_fetch,
+            t_feat_done - t_feat,
+            t_score_done - t_score,
+            t_explain_done - t_explain,
+            t1 - t0,
         )
 
         return RunCreateResponse(
@@ -126,7 +154,7 @@ def create_run_endpoint(
         run = session.query(Run).filter(Run.run_id == run_id).first() if "run_id" in locals() else None
         if run:
             run.status = "failed"
-            run.error_text = str(e)
+            run.error_text = f"{type(e).__name__}: {e}"
             session.commit()
         raise HTTPException(status_code=500, detail={"run_id": run_id if "run_id" in locals() else None, "error": str(e)})
 
