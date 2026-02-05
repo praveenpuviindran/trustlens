@@ -676,7 +676,8 @@ One App Runner service can now host both the API and UI, simplifying deployment 
 4. Environment variables:
    - `CORS_ORIGINS=https://<your-pages-site>.pages.dev`
    - `DATABASE_URL` (optional; if unset, DuckDB is used for local/dev)
-5. Note: Render free tier sleeps on idle, first request may be slow.
+5. Python version: 3.11.x recommended (pinned via `runtime.txt` and `.python-version`).
+6. Note: Render free tier sleeps on idle, first request may be slow.
 
 **Expected public UX**
 User opens the Pages URL, submits a claim/query, and sees score/evidence/explanation/chat via the Render API.
