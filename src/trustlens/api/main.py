@@ -23,7 +23,10 @@ limit = int(os.getenv("RATE_LIMIT_PER_MIN", settings.rate_limit_per_min))
 app.state.rate_limiter = RateLimiter(limit_per_min=limit)
 
 # Local dev CORS (same-origin in production)
-cors_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+cors_env = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,https://trustlens.pages.dev",
+)
 cors_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
