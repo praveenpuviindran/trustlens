@@ -671,8 +671,8 @@ One App Runner service can now host both the API and UI, simplifying deployment 
 
 **Render (API)**
 1. Create a new Web Service from this GitHub repo.
-2. Build command: `pip install -e .`
-3. Start command: `python3 -m uvicorn api.main:app --host 0.0.0.0 --port $PORT` (or use `render-start.sh`)
+2. Build command: `python3 -m pip install -U pip && python3 -m pip install -e .`
+3. Start command: `python3 -m uvicorn api.main:app --host 0.0.0.0 --port $PORT` (or use `scripts/render_start.sh`)
 4. Environment variables:
    - `CORS_ORIGINS=https://<your-pages-site>.pages.dev`
    - `DATABASE_URL` (optional; if unset, DuckDB is used for local/dev)
