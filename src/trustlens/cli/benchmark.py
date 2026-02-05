@@ -25,6 +25,9 @@ def benchmark_cmd(
     model: list[str] = typer.Option(..., "--model", help="Model IDs to benchmark"),
     max_records: int = typer.Option(25, help="Max evidence records per claim"),
     no_fetch_evidence: bool = typer.Option(False, help="Skip evidence fetch; use synthetic features"),
+    dataset_path: Path | None = typer.Option(None, help="Local CSV dataset path"),
+    save_errors: bool = typer.Option(False, help="Save error analysis artifacts"),
+    error_dir: Path | None = typer.Option(None, help="Output dir for error artifacts"),
 ) -> None:
     engine = build_engine()
     ensure_db(engine)
@@ -46,6 +49,9 @@ def benchmark_cmd(
             session=session,
             config=config,
             evidence_fetcher=get_evidence_fetcher() if not no_fetch_evidence else None,
+            dataset_path=dataset_path,
+            save_errors=save_errors,
+            error_dir=error_dir,
         )
 
     table = Table(title="Benchmark Summary")

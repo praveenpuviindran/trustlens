@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
+import hashlib
+import csv
 
 from datasets import load_dataset, load_from_disk, Dataset
 import numpy as np
@@ -151,3 +153,64 @@ def load_hf_dataset(
         "selected_indices": indices,
     }
     return rows, meta
+
+
+def load_local_csv_dataset(
+    csv_path: str,
+    seed: int = 42,
+) -> tuple[list[DatasetRow], dict]:
+    path = Path(csv_path)
+    rows: List[DatasetRow] = []
+    with path.open("r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader):
+            claim_text = str(row.get("claim_text", "")).strip()
+            raw_label = str(row.get("label", "")).strip().lower()
+            label = 1 if raw_label in {"credible", "1", "true"} else 0 if raw_label in {"not_credible", "0", "false"} else None
+            if label is None:
+                continue
+            rows.append(DatasetRow(claim_id=str(idx), claim_text=claim_text, label=label))
+
+    data_bytes = path.read_bytes()
+    dataset_hash = hashlib.sha256(data_bytes).hexdigest()
+    meta = {
+        "dataset_name": path.stem,
+        "split": "local",
+        "max_examples": len(rows),
+        "seed": seed,
+        "dropped": 0,
+        "selected_indices": list(range(len(rows))),
+        "dataset_hash": dataset_hash,
+    }
+    return rows, meta
+
+
+def stratified_split(
+    rows: List[DatasetRow],
+    split_ratio: Tuple[float, float, float] = (0.7, 0.15, 0.15),
+    seed: int = 42,
+) -> Tuple[List[DatasetRow], List[DatasetRow], List[DatasetRow]]:
+    rng = np.random.default_rng(seed)
+    pos = [r for r in rows if r.label == 1]
+    neg = [r for r in rows if r.label == 0]
+    rng.shuffle(pos)
+    rng.shuffle(neg)
+
+    def _split_group(group: List[DatasetRow]) -> Tuple[List[DatasetRow], List[DatasetRow], List[DatasetRow]]:
+        n = len(group)
+        n_train = int(n * split_ratio[0])
+        n_val = int(n * split_ratio[1])
+        train = group[:n_train]
+        val = group[n_train : n_train + n_val]
+        test = group[n_train + n_val :]
+        return train, val, test
+
+    train_pos, val_pos, test_pos = _split_group(pos)
+    train_neg, val_neg, test_neg = _split_group(neg)
+    train = train_pos + train_neg
+    val = val_pos + val_neg
+    test = test_pos + test_neg
+    rng.shuffle(train)
+    rng.shuffle(val)
+    rng.shuffle(test)
+    return train, val, test

@@ -544,3 +544,36 @@ Most predictions landed in the 0.6–0.8 bin; baseline calibration was strongest
 Baseline remains stronger on this small real-evidence run. LR models need more data or stronger features to surpass baseline.
 
 ---
+
+## Slice 12 — Robust Dataset + Stratified Evaluation + Error Analysis (Complete)
+
+**Purpose**  
+Make evaluation reproducible and diagnostic with a local dataset, stratified metrics, and error artifacts.
+
+**What this slice does**
+- Adds a committed evaluation dataset (`data/eval/trustlens_eval_v1.csv`)
+- Enables deterministic, stratified splits and bucketed metrics
+- Produces error analysis artifacts (FP/FN lists + hard cases + summary)
+
+**What I implemented**
+- Local dataset loader + SHA256 hashing + stratified split utilities
+- Stratified metrics by evidence volume, unknown priors, and domain concentration
+- Error artifact generation (CSV + markdown summary)
+- CLI support via `benchmark --dataset-path ... --save-errors`
+
+**Reproduce**
+```bash
+# Offline/local evaluation dataset
+PYTHONPATH=src python -m trustlens.cli.app benchmark \
+  --dataset liar --dataset-path data/eval/trustlens_eval_v1.csv \
+  --model baseline_v1 --max-examples 200 --no-fetch-evidence \
+  --save-errors --error-dir reports/errors/trustlens_eval_v1
+```
+
+**Why this matters**
+This slice makes model evaluation **reproducible and explainable**:
+- no external downloads needed to run evals
+- stratified buckets reveal blind spots
+- error artifacts support targeted iteration
+
+---

@@ -15,12 +15,13 @@ from sqlalchemy.orm import Session
 
 from trustlens.db.schema import Feature, Run
 from trustlens.repos.trained_model_repo import TrainedModelRepository
-from trustlens.services.datasets_loader import DatasetRow, load_hf_dataset
+from trustlens.services.datasets_loader import DatasetRow, load_hf_dataset, load_local_csv_dataset
 from trustlens.services.evaluation import EvalRow, compute_metrics
 from trustlens.services.feature_engineering import FeatureEngineeringService
 from trustlens.services.model_training import FEATURE_SCHEMA_VERSION
 from trustlens.services.scoring import BaselineScorer, TrainedModelScorer
 from trustlens.services.pipeline_evidence import create_run
+from trustlens.services.stratified_eval import compute_bucket_metrics, write_error_artifacts
 
 
 FEATURE_GROUPS = [
@@ -122,6 +123,9 @@ def run_benchmark(
     config: BenchmarkConfig,
     evidence_fetcher: Optional[Callable[[str, int], list[dict]]] = None,
     output_dir: Optional[Path] = None,
+    save_errors: bool = False,
+    error_dir: Optional[Path] = None,
+    dataset_path: Optional[Path] = None,
 ) -> dict:
     repo = TrainedModelRepository(session)
     for model_id in config.model_ids:
@@ -130,12 +134,15 @@ def run_benchmark(
         if not repo.get(model_id):
             raise RuntimeError(f"{model_id} not found. Run `trustlens train-model` first.")
 
-    rows, meta = load_hf_dataset(
-        dataset_name=config.dataset_name,
-        split=config.dataset_split,
-        max_examples=config.max_examples,
-        seed=config.seed,
-    )
+    if dataset_path is not None:
+        rows, meta = load_local_csv_dataset(str(dataset_path), seed=config.seed)
+    else:
+        rows, meta = load_hf_dataset(
+            dataset_name=config.dataset_name,
+            split=config.dataset_split,
+            max_examples=config.max_examples,
+            seed=config.seed,
+        )
     dataset_hash = _dataset_hash({**meta, "label_mapping_name": config.label_mapping_name})
 
     feature_service = FeatureEngineeringService(session)
@@ -156,9 +163,11 @@ def run_benchmark(
         eval_rows: List[EvalRow] = []
         probs: List[float] = []
         labels: List[int] = []
+        claim_map: Dict[str, str] = {}
 
         for row in rows:
             run_id = create_run(session, claim_text=row.claim_text, query_text=row.claim_text)
+            claim_map[run_id] = row.claim_text
 
             if config.no_fetch_evidence:
                 feats = _synthetic_features(row.claim_text)
@@ -218,6 +227,22 @@ def run_benchmark(
         metrics = compute_metrics(eval_rows)
         metrics["ece"] = _ece(probs, labels)
         metrics_by_model[model_id] = metrics
+
+        # Bucket metrics
+        run_ids = [r.run_id for r in eval_rows]
+        feat_rows = (
+            session.query(Feature.run_id, Feature.feature_name, Feature.feature_value)
+            .filter(Feature.run_id.in_(run_ids))
+            .all()
+        )
+        feature_map: Dict[str, Dict[str, float]] = {}
+        for rid, name, value in feat_rows:
+            feature_map.setdefault(rid, {})[name] = float(value)
+        metrics_by_model[model_id]["buckets"] = compute_bucket_metrics(eval_rows, feature_map)
+
+        if save_errors:
+            out = error_dir or (Path("reports") / "errors" / config.dataset_name / model_id)
+            write_error_artifacts(eval_rows, feature_map, claim_map, out)
 
     # Ablations: zero out each feature group
     for model_id in config.model_ids:
@@ -314,6 +339,7 @@ def run_benchmark(
             "no_fetch_evidence": config.no_fetch_evidence,
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
             "model_feature_schema_versions": model_schema_versions,
+            "dataset_path": str(dataset_path) if dataset_path else None,
         },
         "dataset_hash": dataset_hash,
         "metrics": metrics_by_model,
