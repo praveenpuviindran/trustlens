@@ -1,0 +1,2 @@
+"""Render entrypoint package."""
+

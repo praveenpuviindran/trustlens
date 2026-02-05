@@ -3,7 +3,7 @@ services:
     name: trustlens-api
     env: python
     buildCommand: pip install -e .
-    startCommand: uvicorn trustlens.api.main:app --host 0.0.0.0 --port $PORT
+    startCommand: python3 -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: CORS_ORIGINS
         value: ""
