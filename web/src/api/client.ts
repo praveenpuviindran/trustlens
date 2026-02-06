@@ -10,18 +10,25 @@ import type {
 } from '../types'
 
 const RAW_BASE = import.meta.env.VITE_API_BASE_URL || 'https://trustlens-tzrm.onrender.com'
+console.log('API_BASE_URL:', RAW_BASE)
 const API_BASE = RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE}/api`
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text || `Request failed: ${res.status}`)
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options
+    })
+    if (!res.ok) {
+      console.error('Request failed:', res.status, res.statusText, path)
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return (await res.json()) as T
+  } catch (error) {
+    console.error('Network error:', error)
+    throw error
   }
-  return (await res.json()) as T
 }
 
 export const api = {
